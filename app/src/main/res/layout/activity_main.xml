@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚡ FF BOOSTER PRO"
+            android:textColor="@color/accent2"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/subtitle"
+            android:textColor="@color/text_dim"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Device stats card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tvDeviceName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/device_card_title"
+                android:textColor="@color/text_main"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvRam"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:layout_marginTop="10dp" />
+
+            <ProgressBar
+                android:id="@+id/pbRam"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginTop="6dp"
+                android:progressTint="@color/accent"
+                android:progressBackgroundTint="@color/card_stroke" />
+
+            <TextView
+                android:id="@+id/tvStorage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:layout_marginTop="10dp" />
+
+            <ProgressBar
+                android:id="@+id/pbStorage"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginTop="6dp"
+                android:progressTint="@color/cyan"
+                android:progressBackgroundTint="@color/card_stroke" />
+
+            <TextView
+                android:id="@+id/tvBattery"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:layout_marginTop="10dp" />
+        </LinearLayout>
+
+        <!-- Boost button -->
+        <Button
+            android:id="@+id/btnBoost"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/btn_boost"
+            android:text="@string/boost_btn"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvBoostStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/green"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+        <!-- Launch FF -->
+        <Button
+            android:id="@+id/btnLaunch"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_launch"
+            android:text="@string/launch_ff"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Ping + GFX row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnPing"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="@string/ping_btn"
+                android:textColor="@color/text_main"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnGfx"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="@string/gfx_btn"
+                android:textColor="@color/text_main"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Meta + Sensitivity row (v2.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnMeta"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🆕 تحديث OB54"
+                android:textColor="@color/accent2"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnSens"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🎯 حساسيات 2026"
+                android:textColor="@color/accent2"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Ping result card -->
+        <LinearLayout
+            android:id="@+id/pingCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📡 نتيجة فحص السيرفرات"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvPingResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:lineSpacingExtra="6dp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Tips card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/tips_title"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="13sp"
+                android:lineSpacingExtra="5dp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

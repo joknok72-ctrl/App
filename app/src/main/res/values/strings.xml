@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FF Booster Pro</string>
+    <string name="subtitle">الإصدار 2.0 — محدّث لـ OB54 | مخصص لهاتف Realme C25Y</string>
+    <string name="device_card_title">📱 جهازك</string>
+    <string name="boost_btn">⚡ تسريع فائق الآن</string>
+    <string name="boosting">جاري التسريع…</string>
+    <string name="boost_done">✅ تم التسريع! الرام أصبح جاهزاً للعبة</string>
+    <string name="launch_ff">🔥 شغّل فري فاير الآن</string>
+    <string name="ping_btn">📡 فحص البينج (Ping)</string>
+    <string name="gfx_btn">🎮 إعدادات الجرافيك المثالية GFX</string>
+    <string name="ram_label">الرام (RAM)</string>
+    <string name="storage_label">التخزين</string>
+    <string name="battery_label">حرارة البطارية</string>
+    <string name="cpu_label">المعالج</string>
+    <string name="ping_testing">جاري فحص سيرفرات فري فاير…</string>
+    <string name="ff_not_found">لم يتم العثور على فري فاير — ثبّت اللعبة أولاً</string>
+    <string name="gfx_title">إعدادات GFX المثالية لهاتفك</string>
+    <string name="gfx_desc">هذه أفضل إعدادات مضبوطة خصيصاً لهاتف Realme C25Y (معالج Unisoc T610 + رام 4GB) لأعلى فريمات وأقل تهنيج. طبّقها داخل إعدادات اللعبة:</string>
+    <string name="tips_title">💡 نصائح احترافية قبل اللعب</string>
+</resources>

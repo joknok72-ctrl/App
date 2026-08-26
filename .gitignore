@@ -1,0 +1,4 @@
+build-output/tmp/
+*.log
+.gradle/
+local.properties
