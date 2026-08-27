@@ -113,6 +113,17 @@
             android:layout_marginTop="8dp"
             android:visibility="gone" />
 
+        <!-- Boost lifetime stats (v3.0) -->
+        <TextView
+            android:id="@+id/tvBoostStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/accent2"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+
         <!-- Launch FF -->
         <Button
             android:id="@+id/btnLaunch"
@@ -186,6 +197,18 @@
                 android:textStyle="bold"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <!-- Pro Tools (v3.0) -->
+        <Button
+            android:id="@+id/btnTools"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_secondary"
+            android:text="🛠 أدوات برو — مراقبة المعالج + اختصارات ما قبل الرانكد"
+            android:textColor="@color/accent2"
+            android:textStyle="bold"
+            android:textSize="14sp" />
 
         <!-- Ping result card -->
         <LinearLayout

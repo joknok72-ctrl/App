@@ -6,7 +6,7 @@
 set -e
 
 SDK=/home/user/android-sdk
-BT=$SDK/build-tools/34.0.0
+BT=$SDK/build-tools/35.0.0
 PLATFORM=$SDK/platforms/android-34/android.jar
 ROOT=/home/user/webapp
 SRC=$ROOT/app/src/main

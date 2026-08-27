@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.BatteryManager;
@@ -36,17 +37,28 @@ public class MainActivity extends Activity {
     // Free Fire (Garena) server endpoints for latency probing
     private static final String[][] SERVERS = {
             {"سيرفر الشرق الأوسط (ME)", "mpsg.freefiremobile.com"},
+            {"سيرفر جارينا الرئيسي", "ff.garena.com"},
             {"جوجل (مرجع عام)", "google.com"},
             {"كلاود فلير (مرجع سريع)", "1.1.1.1"}
     };
 
-    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips;
+    private static final String PREFS = "ffbooster";
+
+    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
+
+    // Live auto-refresh of device stats every 3 seconds (v3.0)
+    private final Runnable statsTick = new Runnable() {
+        @Override public void run() {
+            refreshStats();
+            ui.postDelayed(this, 3000);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,8 +81,11 @@ public class MainActivity extends Activity {
         btnGfx = findViewById(R.id.btnGfx);
         btnMeta = findViewById(R.id.btnMeta);
         btnSens = findViewById(R.id.btnSens);
+        btnTools = findViewById(R.id.btnTools);
+        tvBoostStats = findViewById(R.id.tvBoostStats);
 
         tvTips.setText(
+                "• 🛠 جديد v3.0: افتح \"أدوات برو\" — مراقبة المعالج الحية + اختصارات ما قبل الرانكد بضغطة واحدة\n" +
                 "• 🆕 افتح \"تحديث OB54\" لتعرف أقوى أسلحة الميتا الجديدة (MP40 الأول حالياً!)\n" +
                 "• 🎯 طبّق \"حساسيات 2026\" المضبوطة لجهازك لأعلى نسبة هيدشوت\n" +
                 "• فعّل وضع الطيران 5 ثواني ثم أطفئه قبل اللعب لتجديد الشبكة\n" +
@@ -85,14 +100,23 @@ public class MainActivity extends Activity {
         btnGfx.setOnClickListener(v -> startActivity(new Intent(this, GfxActivity.class)));
         btnMeta.setOnClickListener(v -> startActivity(new Intent(this, MetaActivity.class)));
         btnSens.setOnClickListener(v -> startActivity(new Intent(this, SensitivityActivity.class)));
+        btnTools.setOnClickListener(v -> startActivity(new Intent(this, ToolsActivity.class)));
 
         refreshStats();
+        updateBoostStats();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        refreshStats();
+        ui.post(statsTick);          // live monitoring while visible
+        updateBoostStats();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ui.removeCallbacks(statsTick);
     }
 
     // ---------- Device stats ----------
@@ -127,11 +151,42 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ---------- Boost statistics (v3.0) ----------
+    private void updateBoostStats() {
+        if (tvBoostStats == null) return;
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int count = sp.getInt("boost_count", 0);
+        long freedTotal = sp.getLong("freed_total_mb", 0);
+        if (count > 0) {
+            tvBoostStats.setVisibility(View.VISIBLE);
+            tvBoostStats.setText(String.format(Locale.US,
+                    "🏆 إجمالي التسريعات: %d مرة  |  رام محرر تراكمياً: ≈%d MB", count, freedTotal));
+        } else {
+            tvBoostStats.setVisibility(View.GONE);
+        }
+    }
+
+    private void recordBoost(long freedMb) {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        sp.edit()
+          .putInt("boost_count", sp.getInt("boost_count", 0) + 1)
+          .putLong("freed_total_mb", sp.getLong("freed_total_mb", 0) + Math.max(freedMb, 0))
+          .apply();
+    }
+
+    private long availRamMb() {
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        return mi.availMem / (1024 * 1024);
+    }
+
     // ---------- RAM Boost ----------
     private void doBoost() {
         btnBoost.setEnabled(false);
         btnBoost.setText(R.string.boosting);
         tvBoostStatus.setVisibility(View.GONE);
+        final long ramBefore = availRamMb();
 
         executor.execute(() -> {
             int killed = 0;
@@ -156,11 +211,15 @@ public class MainActivity extends Activity {
 
             final int k = killed;
             ui.postDelayed(() -> {
+                long freed = availRamMb() - ramBefore;
+                recordBoost(freed);
                 btnBoost.setEnabled(true);
                 btnBoost.setText(R.string.boost_btn);
                 tvBoostStatus.setVisibility(View.VISIBLE);
-                tvBoostStatus.setText("✅ تم تنظيف " + k + " تطبيق من الخلفية — الرام جاهز لفري فاير!");
+                String freedTxt = freed > 0 ? " وتحرير ≈" + freed + " MB رام" : "";
+                tvBoostStatus.setText("✅ تم تنظيف " + k + " تطبيق من الخلفية" + freedTxt + " — الرام جاهز لفري فاير!");
                 refreshStats();
+                updateBoostStats();
             }, 1200);
         });
     }
@@ -199,6 +258,7 @@ public class MainActivity extends Activity {
 
         executor.execute(() -> {
             StringBuilder sb = new StringBuilder();
+            long bestMs = Long.MAX_VALUE;
             for (String[] srv : SERVERS) {
                 long ms = measureLatency(srv[1]);
                 String verdict;
@@ -206,9 +266,16 @@ public class MainActivity extends Activity {
                 else if (ms < 60) verdict = "🟢 ممتاز (" + ms + "ms)";
                 else if (ms < 120) verdict = "🟡 جيد (" + ms + "ms)";
                 else verdict = "🔴 مرتفع (" + ms + "ms)";
+                if (ms > 0 && ms < bestMs) bestMs = ms;
                 sb.append(srv[0]).append(": ").append(verdict).append("\n");
             }
-            sb.append("\n💡 لو البينج فوق 100ms: قرّب من الراوتر أو استخدم بيانات 4G");
+            if (bestMs != Long.MAX_VALUE) {
+                String overall = bestMs < 60 ? "🎮 اتصالك ممتاز للرانكد!"
+                        : (bestMs < 120 ? "👍 اتصالك مقبول — تجنب الكلوز فايت البعيد"
+                        : "⚠️ بينج مرتفع — لا تدخل رانكد الآن!");
+                sb.append("\n").append(overall).append("\n");
+            }
+            sb.append("💡 لو البينج فوق 100ms: قرّب من الراوتر، جرّب خدعة وضع الطيران من أدوات برو، أو استخدم بيانات 4G");
             final String result = sb.toString().trim();
             ui.post(() -> {
                 tvPingResult.setText(result);
