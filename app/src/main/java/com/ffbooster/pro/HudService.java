@@ -61,6 +61,8 @@ public class HudService extends Service {
     // system is under heavy load (game dropping frames) the display pipeline
     // slows and this reflects real perceived smoothness.
     private volatile int fps = 0;
+    /** Last measured display FPS — read by AutoPilotService for session avg-FPS stats (v9.0). -1 = HUD off. */
+    public static volatile int currentFps = -1;
     private int frameCount = 0;
     private long fpsWindowStart = 0;
     private android.view.Choreographer.FrameCallback frameCb;
@@ -74,6 +76,7 @@ public class HudService extends Service {
                 long elapsed = frameTimeNanos - fpsWindowStart;
                 if (elapsed >= 1_000_000_000L) {
                     fps = (int) (frameCount * 1_000_000_000L / elapsed);
+                    currentFps = fps;
                     frameCount = 0;
                     fpsWindowStart = frameTimeNanos;
                 }
@@ -312,6 +315,7 @@ public class HudService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        currentFps = -1;
         stopFpsCounter();
         handler.removeCallbacks(tick);
         if (hudView != null && wm != null) {

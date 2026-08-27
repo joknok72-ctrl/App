@@ -44,6 +44,9 @@ public class CrosshairService extends Service {
     static final int[] COLORS = {0xFF00E676, 0xFFFF1744, 0xFF00E5FF, 0xFFFFEA00, 0xFFFFFFFF};
     static final String[] COLOR_NAMES = {"أخضر", "أحمر", "سماوي", "أصفر", "أبيض"};
     static final String[] STYLE_NAMES = {"نقطة", "صليب", "دائرة + نقطة"};
+    // Adjustable size (v9.0): scale factor applied to every drawn dimension
+    static final float[] SIZES = {0.7f, 1.0f, 1.45f};
+    static final String[] SIZE_NAMES = {"صغير", "متوسط", "كبير"};
 
     private WindowManager wm;
     private CrosshairView view;
@@ -74,7 +77,7 @@ public class CrosshairService extends Service {
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
 
-        int size = dp(56);
+        int size = dp(84); // big enough for the largest size setting
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 size, size, type,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -96,22 +99,23 @@ public class CrosshairService extends Service {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
             int color = COLORS[sp.getInt("xhair_color", 0) % COLORS.length];
             int style = sp.getInt("xhair_style", 0) % STYLE_NAMES.length;
+            float k = SIZES[sp.getInt("xhair_size", 1) % SIZES.length]; // v9.0 scale
 
             float cx = getWidth() / 2f, cy = getHeight() / 2f;
 
             // subtle black outline first for visibility on any background
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(Color.BLACK);
-            if (style == 0) c.drawCircle(cx, cy, dp(4) + 1.5f, paint);
+            if (style == 0) c.drawCircle(cx, cy, dp(4) * k + 1.5f, paint);
 
             paint.setColor(color);
             switch (style) {
                 case 0: // dot
-                    c.drawCircle(cx, cy, dp(4), paint);
+                    c.drawCircle(cx, cy, dp(4) * k, paint);
                     break;
                 case 1: // cross
-                    paint.setStrokeWidth(dp(2));
-                    float arm = dp(10), gap = dp(3);
+                    paint.setStrokeWidth(Math.max(2f, dp(2) * k));
+                    float arm = dp(10) * k, gap = dp(3) * k;
                     c.drawLine(cx - arm, cy, cx - gap, cy, paint);
                     c.drawLine(cx + gap, cy, cx + arm, cy, paint);
                     c.drawLine(cx, cy - arm, cx, cy - gap, paint);
@@ -119,10 +123,10 @@ public class CrosshairService extends Service {
                     break;
                 case 2: // circle + dot
                     paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeWidth(dp(2));
-                    c.drawCircle(cx, cy, dp(12), paint);
+                    paint.setStrokeWidth(Math.max(2f, dp(2) * k));
+                    c.drawCircle(cx, cy, dp(12) * k, paint);
                     paint.setStyle(Paint.Style.FILL);
-                    c.drawCircle(cx, cy, dp(3), paint);
+                    c.drawCircle(cx, cy, dp(3) * k, paint);
                     break;
             }
         }
