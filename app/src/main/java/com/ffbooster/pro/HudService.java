@@ -28,9 +28,12 @@ import android.widget.TextView;
 import java.util.Locale;
 
 /**
- * Floating in-game HUD (v6.0) — a tiny draggable overlay that stays on top
- * of Free Fire showing live free RAM, battery temperature and battery level.
- * Tap = collapse/expand. Drag to move anywhere. Long-press = close.
+ * Floating in-game HUD 3.0 (v8.0) — a tiny draggable overlay that stays on
+ * top of Free Fire showing a REAL display FPS counter (via Choreographer
+ * frame callbacks), live free RAM, battery temperature, battery level and a
+ * play-session timer.
+ * Tap = collapse/expand. DOUBLE-TAP = instant RAM boost without leaving the
+ * game. Drag to move anywhere. Long-press = close.
  *
  * Ultra-lightweight: one TextView, updates every 2s, no layout inflation.
  */
@@ -50,6 +53,42 @@ public class HudService extends Service {
     private WindowManager.LayoutParams lp;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean expanded = true;
+    private long sessionStart = 0;
+    private volatile boolean boosting = false;
+
+    // ---- Real FPS counter via Choreographer (v8.0) ----
+    // Counts display vsync frames delivered to our overlay window. When the
+    // system is under heavy load (game dropping frames) the display pipeline
+    // slows and this reflects real perceived smoothness.
+    private volatile int fps = 0;
+    private int frameCount = 0;
+    private long fpsWindowStart = 0;
+    private android.view.Choreographer.FrameCallback frameCb;
+
+    private void startFpsCounter() {
+        fpsWindowStart = System.nanoTime();
+        frameCount = 0;
+        frameCb = new android.view.Choreographer.FrameCallback() {
+            @Override public void doFrame(long frameTimeNanos) {
+                frameCount++;
+                long elapsed = frameTimeNanos - fpsWindowStart;
+                if (elapsed >= 1_000_000_000L) {
+                    fps = (int) (frameCount * 1_000_000_000L / elapsed);
+                    frameCount = 0;
+                    fpsWindowStart = frameTimeNanos;
+                }
+                if (running) android.view.Choreographer.getInstance().postFrameCallback(this);
+            }
+        };
+        android.view.Choreographer.getInstance().postFrameCallback(frameCb);
+    }
+
+    private void stopFpsCounter() {
+        if (frameCb != null) {
+            try { android.view.Choreographer.getInstance().removeFrameCallback(frameCb); } catch (Exception ignored) {}
+            frameCb = null;
+        }
+    }
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -76,7 +115,9 @@ public class HudService extends Service {
         }
         startForeground(NOTIF_ID, buildNotification());
         if (hudView == null) addHud();
+        if (sessionStart == 0) sessionStart = System.currentTimeMillis();
         running = true;
+        if (frameCb == null) startFpsCounter();
         handler.removeCallbacks(tick);
         handler.post(tick);
         return START_STICKY;
@@ -122,7 +163,9 @@ public class HudService extends Service {
             private int startX, startY;
             private float touchX, touchY;
             private long downTime;
+            private long lastTapTime;
             private boolean moved;
+            private final Runnable singleTap = () -> { expanded = !expanded; updateHud(); };
 
             @Override public boolean onTouch(View v, MotionEvent e) {
                 switch (e.getAction()) {
@@ -141,13 +184,18 @@ public class HudService extends Service {
                         try { wm.updateViewLayout(hudView, lp); } catch (Exception ignored) {}
                         return true;
                     case MotionEvent.ACTION_UP:
-                        long held = System.currentTimeMillis() - downTime;
+                        long now = System.currentTimeMillis();
+                        long held = now - downTime;
                         if (!moved) {
-                            if (held > 600) {           // long press = close
+                            if (held > 600) {                    // long press = close
                                 stopSelf();
-                            } else {                     // tap = collapse/expand
-                                expanded = !expanded;
-                                updateHud();
+                            } else if (now - lastTapTime < 350) { // DOUBLE-TAP = instant boost
+                                handler.removeCallbacks(singleTap);
+                                lastTapTime = 0;
+                                quickBoost();
+                            } else {                             // maybe single tap
+                                lastTapTime = now;
+                                handler.postDelayed(singleTap, 360);
                             }
                         }
                         return true;
@@ -159,8 +207,44 @@ public class HudService extends Service {
         try { wm.addView(hudView, lp); } catch (Exception e) { stopSelf(); }
     }
 
+    // ---------- Double-tap instant boost (v7.0) — clean RAM without leaving the game ----------
+    private void quickBoost() {
+        if (boosting) return;
+        boosting = true;
+        hudView.setText("⚡ تسريع…");
+        final long before = availRamMb();
+        new Thread(() -> {
+            int killed = 0;
+            try {
+                ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                for (android.content.pm.ApplicationInfo app : getPackageManager().getInstalledApplications(0)) {
+                    if ((app.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+                    if (app.packageName.equals(getPackageName())) continue;
+                    if (app.packageName.startsWith("com.dts.")) continue; // never touch Free Fire
+                    try { am.killBackgroundProcesses(app.packageName); killed++; } catch (Exception ignored) {}
+                }
+            } catch (Exception ignored) {}
+            System.gc();
+            try { Thread.sleep(600); } catch (InterruptedException ignored) {}
+            final long freed = Math.max(0, availRamMb() - before);
+            final int k = killed;
+            handler.post(() -> {
+                boosting = false;
+                hudView.setText("✅ " + k + " تطبيق | +" + freed + "MB");
+                handler.postDelayed(this::updateHud, 1800);
+            });
+        }).start();
+    }
+
+    private long availRamMb() {
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        return mi.availMem / (1024 * 1024);
+    }
+
     private void updateHud() {
-        if (hudView == null) return;
+        if (hudView == null || boosting) return;
 
         ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
@@ -181,12 +265,15 @@ public class HudService extends Service {
         String ramIcon = usedPct >= 90 ? "🔴" : (usedPct >= 75 ? "🟡" : "🟢");
         String tempIcon = temp >= 42 ? "🔥" : (temp >= 38 ? "🟡" : "❄");
 
+        long sessMin = sessionStart > 0 ? (System.currentTimeMillis() - sessionStart) / 60_000 : 0;
+        int f = fps;
+        String fpsIcon = f >= 50 ? "🟢" : (f >= 30 ? "🟡" : "🔴");
         String text;
         if (expanded) {
-            text = String.format(Locale.US, "%s RAM %dMB (%d%%)\n%s %.1f°C  🔋%d%%",
-                    ramIcon, availMb, usedPct, tempIcon, temp, level);
+            text = String.format(Locale.US, "%s %dFPS  %s RAM %dMB (%d%%)\n%s %.1f°C  🔋%d%%  ⏱%dد",
+                    fpsIcon, f, ramIcon, availMb, usedPct, tempIcon, temp, level, sessMin);
         } else {
-            text = ramIcon + " " + availMb;
+            text = fpsIcon + f + " " + ramIcon + availMb;
         }
         hudView.setText(text);
 
@@ -216,8 +303,8 @@ public class HudService extends Service {
                 ? new Notification.Builder(this, CHANNEL_ID)
                 : new Notification.Builder(this);
         b.setSmallIcon(android.R.drawable.ic_menu_view)
-         .setContentTitle("📊 HUD فري فاير شغّال")
-         .setContentText("اسحبه لأي مكان — اضغط مطولاً عليه للإغلاق")
+         .setContentTitle("📊 HUD 2.0 فري فاير شغّال")
+         .setContentText("دبل كليك عليه = تسريع فوري ⚡ | مطولاً = إغلاق")
          .setOngoing(true);
         return b.build();
     }
@@ -225,6 +312,7 @@ public class HudService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        stopFpsCounter();
         handler.removeCallbacks(tick);
         if (hudView != null && wm != null) {
             try { wm.removeView(hudView); } catch (Exception ignored) {}
