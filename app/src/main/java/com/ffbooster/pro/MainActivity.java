@@ -22,8 +22,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
@@ -49,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -87,12 +85,16 @@ public class MainActivity extends Activity {
         btnCombos = findViewById(R.id.btnCombos);
         btnCodes = findViewById(R.id.btnCodes);
         btnGameMode = findViewById(R.id.btnGameMode);
+        btnHud = findViewById(R.id.btnHud);
+        btnReadiness = findViewById(R.id.btnReadiness);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
 
         tvTips.setText(
-                "• 🚀 جديد v5.0: التسريع الآن \"تيربو\" — 3 موجات تنظيف متتالية تصطاد التطبيقات اللي بترجع تفتح نفسها!\n" +
-                "• 🎮 جديد v5.0: \"وضع الألعاب\" — تنظيف تلقائي كل 30 ثانية + مراقبة الحرارة وأنت بتلعب (بيشتغل لوحده مع زر التشغيل)\n" +
+                "• 🧠 جديد v6.0: تسريع ذكي تكيفي — التطبيق يقرأ ضغط الرام ويقرر عدد موجات التنظيف لوحده (2←5 موجات)!\n" +
+                "• 📊 جديد v6.0: HUD عائم داخل اللعبة — رام وحرارة مباشرة فوق فري فاير (اسحبه — اضغطه يصغر — مطولاً يقفل)\n" +
+                "• 🏁 جديد v6.0: \"فحص جاهزية الرانكد\" — تقييم شامل (رام+حرارة+بطارية+بينج+جيتر) قبل ما تدخل رانكد\n" +
+                "• 🎮 وضع الألعاب 2.0 — ذكي تكيفي: ينظف كل 12 ثانية لو الرام مخنوقة، ويرتاح لـ 45ث لو الوضع تمام (أوفر للبطارية)\n" +
                 "• ⚔️ \"تشكيلات الشخصيات\" — أقوى 6 كومبوهات لميتا OB54 + دليل رفع الرانك\n" +
                 "• 🛠 افتح \"أدوات برو\" — مراقبة المعالج الحية + اختصارات ما قبل الرانكد بضغطة واحدة\n" +
                 "• 🆕 افتح \"تحديث OB54\" لتعرف أقوى أسلحة الميتا الجديدة (MP40 الأول حالياً!)\n" +
@@ -113,11 +115,14 @@ public class MainActivity extends Activity {
         btnCombos.setOnClickListener(v -> startActivity(new Intent(this, CombosActivity.class)));
         btnCodes.setOnClickListener(v -> openRedeemSite());
         btnGameMode.setOnClickListener(v -> toggleGameMode());
+        btnHud.setOnClickListener(v -> toggleHud());
+        btnReadiness.setOnClickListener(v -> doReadinessCheck());
 
         refreshStats();
         updateBoostStats();
         detectFreeFire();
         updateGameModeButton();
+        updateHudButton();
 
         // Android 13+ needs runtime permission for the Game Mode notification
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
@@ -134,6 +139,7 @@ public class MainActivity extends Activity {
         updateBoostStats();
         detectFreeFire();
         updateGameModeButton();
+        updateHudButton();
     }
 
     @Override
@@ -248,11 +254,12 @@ public class MainActivity extends Activity {
         return mi.availMem / (1024 * 1024);
     }
 
-    // ---------- Turbo Boost engine (v5.0) ----------
+    // ---------- Smart Turbo engine (v6.0) ----------
     /**
      * One kill pass over all user apps. Android on 4GB devices restarts
-     * killed processes aggressively, so Turbo runs 3 passes with short
-     * pauses — far more RAM actually stays free for Free Fire.
+     * killed processes aggressively, so Smart Turbo runs ADAPTIVE passes:
+     * it reads RAM pressure first and decides 2→5 waves automatically,
+     * verifying after each wave whether more cleaning is worth it.
      */
     private int boostPass(ActivityManager am) {
         int killed = 0;
@@ -290,33 +297,49 @@ public class MainActivity extends Activity {
         f.delete();
     }
 
+    private int ramUsedPct() {
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        return (int) ((mi.totalMem - mi.availMem) * 100 / Math.max(mi.totalMem, 1));
+    }
+
     private void doBoost() {
         btnBoost.setEnabled(false);
         btnBoost.setText(R.string.boosting);
         tvBoostStatus.setVisibility(View.GONE);
         final long ramBefore = availRamMb();
+        final int pressureBefore = ramUsedPct();
 
         executor.execute(() -> {
             ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 
-            // ── TURBO: 3 kill passes; pauses let the kernel actually reclaim pages,
-            //    then we catch apps that auto-restarted between passes.
-            int killed = boostPass(am);
-            ui.post(() -> btnBoost.setText("🚀 الموجة 1/3 — تنظيف الخلفية…"));
-            sleep(900);
+            // ── SMART TURBO (v6.0): decide the number of waves from RAM pressure.
+            //    ≥90% used → 5 waves, ≥75% → 4, ≥60% → 3, else 2.
+            int planned = pressureBefore >= 90 ? 5 : pressureBefore >= 75 ? 4 : pressureBefore >= 60 ? 3 : 2;
+            final int plannedF = planned;
+            ui.post(() -> Toast.makeText(this, "🧠 المحرك الذكي: ضغط الرام " + pressureBefore + "% ← خطة " + plannedF + " موجات", Toast.LENGTH_SHORT).show());
 
-            killed = Math.max(killed, boostPass(am));
-            ui.post(() -> btnBoost.setText("🚀 الموجة 2/3 — صيد التطبيقات العنيدة…"));
-            System.gc();
-            sleep(900);
-
-            killed = Math.max(killed, boostPass(am));
-            ui.post(() -> btnBoost.setText("🚀 الموجة 3/3 — تحرير الكاش…"));
-            trimOwnCache();
-            System.gc();
-            sleep(600);
+            int killed = 0;
+            int wavesDone = 0;
+            long lastAvail = availRamMb();
+            for (int w = 1; w <= planned; w++) {
+                final int wf = w;
+                ui.post(() -> btnBoost.setText("🧠 الموجة " + wf + "/" + plannedF + " — تنظيف ذكي…"));
+                killed = Math.max(killed, boostPass(am));
+                if (w == planned) trimOwnCache();   // cache trim on final wave
+                System.gc();
+                sleep(800);
+                wavesDone = w;
+                // Smart early-exit: if a wave freed almost nothing and pressure
+                // is already comfortable, stop — no point burning CPU/battery.
+                long nowAvail = availRamMb();
+                if (w >= 2 && nowAvail - lastAvail < 30 && ramUsedPct() < 70) break;
+                lastAvail = nowAvail;
+            }
 
             final int k = killed;
+            final int waves = wavesDone;
             ui.post(() -> {
                 long freed = availRamMb() - ramBefore;
                 recordBoost(freed);
@@ -324,7 +347,9 @@ public class MainActivity extends Activity {
                 btnBoost.setText(R.string.boost_btn);
                 tvBoostStatus.setVisibility(View.VISIBLE);
                 String freedTxt = freed > 0 ? " وتحرير ≈" + freed + " MB رام" : "";
-                tvBoostStatus.setText("🚀 تسريع تيربو مكتمل! 3 موجات تنظيف — " + k + " تطبيق" + freedTxt + " — الرام في أقصى حالة لفري فاير!");
+                int pressureAfter = ramUsedPct();
+                tvBoostStatus.setText("🧠 تسريع ذكي مكتمل! " + waves + " موجات — " + k + " تطبيق" + freedTxt
+                        + "\n📉 ضغط الرام: " + pressureBefore + "% ← " + pressureAfter + "% — جاهز لفري فاير!");
                 refreshStats();
                 updateBoostStats();
             });
@@ -392,13 +417,147 @@ public class MainActivity extends Activity {
     private void updateGameModeButton() {
         if (btnGameMode == null) return;
         if (GameModeService.running) {
-            btnGameMode.setText("⏹ إيقاف وضع الألعاب (شغّال ✅)");
+            btnGameMode.setText("⏹ إيقاف وضع الألعاب 2.0 (شغّال ✅)");
         } else {
-            btnGameMode.setText("🎮 تفعيل وضع الألعاب — تنظيف تلقائي أثناء اللعب");
+            btnGameMode.setText("🎮 وضع الألعاب 2.0 — تنظيف ذكي تكيفي أثناء اللعب");
         }
     }
 
-    // ---------- Ping test ----------
+    // ---------- Floating in-game HUD control (v6.0) ----------
+    private void toggleHud() {
+        if (HudService.running) {
+            try {
+                startService(new Intent(this, HudService.class).setAction(HudService.ACTION_STOP));
+            } catch (Exception ignored) {}
+            Toast.makeText(this, "⏹ تم إخفاء الـ HUD", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::updateHudButton, 300);
+            return;
+        }
+        // Overlay permission is mandatory for a floating HUD
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" لـ FF Booster ثم ارجع وفعّل الـ HUD", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) {
+                Toast.makeText(this, "افتح الإعدادات ← التطبيقات ← FF Booster ← الظهور فوق التطبيقات", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, HudService.class).setAction(HudService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            Toast.makeText(this, "📊 HUD شغّال! هيفضل ظاهر فوق فري فاير — اسحبه لأي مكان، اضغطه يصغر، مطولاً يقفل", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تشغيل الـ HUD", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateHudButton, 500);
+    }
+
+    private void updateHudButton() {
+        if (btnHud == null) return;
+        if (HudService.running) {
+            btnHud.setText("⏹ إخفاء HUD (ظاهر ✅)");
+        } else {
+            btnHud.setText("📊 HUD داخل اللعبة");
+        }
+    }
+
+    // ---------- Ranked readiness check (v6.0) ----------
+    /**
+     * One-tap full readiness scan before entering Ranked:
+     * RAM pressure + battery level + temperature + ping + jitter,
+     * scored out of 100 with a clear GO / WAIT verdict.
+     */
+    private void doReadinessCheck() {
+        btnReadiness.setEnabled(false);
+        btnReadiness.setText("🏁 جاري الفحص الشامل…");
+        pingCard.setVisibility(View.VISIBLE);
+        tvPingResult.setText("🏁 فحص جاهزية الرانكد شغّال… (رام + بطارية + حرارة + بينج + جيتر)");
+
+        executor.execute(() -> {
+            int score = 100;
+            StringBuilder sb = new StringBuilder();
+
+            // 1) RAM pressure
+            int ram = ramUsedPct();
+            if (ram >= 90) { score -= 30; sb.append("🧠 الرام: ").append(ram).append("% 🔴 مخنوقة — اعمل تسريع ذكي الأول!\n"); }
+            else if (ram >= 75) { score -= 15; sb.append("🧠 الرام: ").append(ram).append("% 🟡 مرتفعة — يفضل تسريع سريع\n"); }
+            else sb.append("🧠 الرام: ").append(ram).append("% 🟢 ممتازة\n");
+
+            // 2) Battery level + temperature
+            try {
+                Intent batt = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+                if (batt != null) {
+                    int level = batt.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                    float temp = batt.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10f;
+                    if (level >= 0 && level < 20) { score -= 20; sb.append("🔋 البطارية: ").append(level).append("% 🔴 ضعيفة — الهاتف هيخنق الأداء!\n"); }
+                    else if (level >= 0 && level < 35) { score -= 8; sb.append("🔋 البطارية: ").append(level).append("% 🟡 اشحن شوية الأول لو ماتش طويل\n"); }
+                    else if (level >= 0) sb.append("🔋 البطارية: ").append(level).append("% 🟢 تمام\n");
+                    if (temp >= 42) { score -= 25; sb.append(String.format(Locale.US, "🌡 الحرارة: %.1f°م 🔴 ساخن — برّد الهاتف 5 دقايق!\n", temp)); }
+                    else if (temp >= 38) { score -= 10; sb.append(String.format(Locale.US, "🌡 الحرارة: %.1f°م 🟡 دافي — شيل الجراب لو موجود\n", temp)); }
+                    else sb.append(String.format(Locale.US, "🌡 الحرارة: %.1f°م 🟢 باردة\n", temp));
+                }
+            } catch (Exception ignored) {}
+
+            // 3) Ping + jitter against FF server (5 samples)
+            long[] samples = latencySamples("mpsg.freefiremobile.com", 5);
+            if (samples == null) samples = latencySamples("ff.garena.com", 5);
+            if (samples != null) {
+                long min = Long.MAX_VALUE, max = 0, sum = 0;
+                for (long s : samples) { min = Math.min(min, s); max = Math.max(max, s); sum += s; }
+                long avg = sum / samples.length;
+                long jitter = max - min;
+                if (avg >= 150) { score -= 30; sb.append("📡 البينج: ").append(avg).append("ms 🔴 مرتفع جداً — متدخلش رانكد!\n"); }
+                else if (avg >= 90) { score -= 15; sb.append("📡 البينج: ").append(avg).append("ms 🟡 مقبول — تجنب الكلوز فايت\n"); }
+                else sb.append("📡 البينج: ").append(avg).append("ms 🟢 ممتاز\n");
+                if (jitter >= 60) { score -= 15; sb.append("📉 الجيتر (التذبذب): ").append(jitter).append("ms 🔴 شبكة غير مستقرة — قرّب من الراوتر\n"); }
+                else if (jitter >= 30) { score -= 7; sb.append("📉 الجيتر: ").append(jitter).append("ms 🟡 تذبذب متوسط\n"); }
+                else sb.append("📉 الجيتر: ").append(jitter).append("ms 🟢 مستقر\n");
+            } else {
+                score -= 40;
+                sb.append("📡 الشبكة: ❌ مفيش اتصال بسيرفرات فري فاير!\n");
+            }
+
+            score = Math.max(0, score);
+            String verdict;
+            if (score >= 85) verdict = "\n🏆 النتيجة: " + score + "/100 — ✅ ادخل رانكد دلوقتي! الجهاز والشبكة في أفضل حالة";
+            else if (score >= 65) verdict = "\n⚖ النتيجة: " + score + "/100 — 🟡 تقدر تلعب بس عالج النقاط الصفرا فوق الأول";
+            else verdict = "\n🛑 النتيجة: " + score + "/100 — 🔴 متدخلش رانكد دلوقتي! عالج المشاكل الحمرا وافحص تاني";
+
+            final String result = "🏁 تقرير جاهزية الرانكد:\n\n" + sb + verdict;
+            ui.post(() -> {
+                tvPingResult.setText(result);
+                btnReadiness.setEnabled(true);
+                btnReadiness.setText("🏁 فحص جاهزية الرانكد");
+            });
+        });
+    }
+
+    /** N TCP-connect latency samples for jitter measurement; null if host unreachable. */
+    private long[] latencySamples(String host, int n) {
+        long[] out = new long[n];
+        int ok = 0;
+        for (int i = 0; i < n; i++) {
+            try {
+                Socket s = new Socket();
+                long t0 = System.nanoTime();
+                s.connect(new InetSocketAddress(host, 443), 3000);
+                out[ok++] = (System.nanoTime() - t0) / 1_000_000;
+                s.close();
+            } catch (Exception ignored) {}
+        }
+        if (ok == 0) return null;
+        if (ok < n) {
+            long[] trimmed = new long[ok];
+            System.arraycopy(out, 0, trimmed, 0, ok);
+            return trimmed;
+        }
+        return out;
+    }
+
+    // ---------- Ping test 2.0 (v6.0: avg + jitter + stability) ----------
     private void doPingTest() {
         pingCard.setVisibility(View.VISIBLE);
         tvPingResult.setText(getString(R.string.ping_testing));
@@ -407,14 +566,24 @@ public class MainActivity extends Activity {
         executor.execute(() -> {
             StringBuilder sb = new StringBuilder();
             long bestMs = Long.MAX_VALUE;
+            long ffJitter = -1;
             for (String[] srv : SERVERS) {
-                long ms = measureLatency(srv[1]);
+                long[] samples = latencySamples(srv[1], 4);
                 String verdict;
-                if (ms < 0) verdict = "❌ غير متاح";
-                else if (ms < 60) verdict = "🟢 ممتاز (" + ms + "ms)";
-                else if (ms < 120) verdict = "🟡 جيد (" + ms + "ms)";
-                else verdict = "🔴 مرتفع (" + ms + "ms)";
-                if (ms > 0 && ms < bestMs) bestMs = ms;
+                if (samples == null) {
+                    verdict = "❌ غير متاح";
+                } else {
+                    long min = Long.MAX_VALUE, max = 0, sum = 0;
+                    for (long s : samples) { min = Math.min(min, s); max = Math.max(max, s); sum += s; }
+                    long avg = sum / samples.length;
+                    long jitter = max - min;
+                    if (ffJitter < 0 && srv[1].contains("freefire")) ffJitter = jitter;
+                    String stability = jitter < 20 ? "↯ مستقر" : (jitter < 60 ? "↯ متوسط" : "↯ متذبذب!");
+                    if (avg < 60) verdict = "🟢 ممتاز (" + avg + "ms ±" + jitter + ") " + stability;
+                    else if (avg < 120) verdict = "🟡 جيد (" + avg + "ms ±" + jitter + ") " + stability;
+                    else verdict = "🔴 مرتفع (" + avg + "ms ±" + jitter + ") " + stability;
+                    if (avg < bestMs) bestMs = avg;
+                }
                 sb.append(srv[0]).append(": ").append(verdict).append("\n");
             }
             if (bestMs != Long.MAX_VALUE) {
@@ -422,8 +591,9 @@ public class MainActivity extends Activity {
                         : (bestMs < 120 ? "👍 اتصالك مقبول — تجنب الكلوز فايت البعيد"
                         : "⚠️ بينج مرتفع — لا تدخل رانكد الآن!");
                 sb.append("\n").append(overall).append("\n");
+                if (ffJitter >= 60) sb.append("⚠️ الجيتر عالي على سيرفر فري فاير — الرصاص هيتأخر حتى لو البينج شكله كويس!\n");
             }
-            sb.append("💡 لو البينج فوق 100ms: قرّب من الراوتر، جرّب خدعة وضع الطيران من أدوات برو، أو استخدم بيانات 4G");
+            sb.append("💡 ± = الجيتر (التذبذب) — لو عالي: قرّب من الراوتر، جرّب خدعة وضع الطيران، أو استخدم بيانات 4G");
             final String result = sb.toString().trim();
             ui.post(() -> {
                 tvPingResult.setText(result);
@@ -432,36 +602,4 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** TCP connect latency (works without root, unlike ICMP on some devices). */
-    private long measureLatency(String host) {
-        int[] ports = {443, 80};
-        for (int port : ports) {
-            try {
-                long best = Long.MAX_VALUE;
-                for (int i = 0; i < 3; i++) {
-                    Socket s = new Socket();
-                    long t0 = System.nanoTime();
-                    s.connect(new InetSocketAddress(host, port), 3000);
-                    long dt = (System.nanoTime() - t0) / 1_000_000;
-                    s.close();
-                    if (dt < best) best = dt;
-                }
-                return best;
-            } catch (Exception ignored) {}
-        }
-        // Fallback: system ping binary
-        try {
-            Process p = Runtime.getRuntime().exec("ping -c 2 -W 2 " + host);
-            BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = r.readLine()) != null) {
-                if (line.contains("time=")) {
-                    String t = line.substring(line.indexOf("time=") + 5);
-                    t = t.split(" ")[0];
-                    return (long) Float.parseFloat(t);
-                }
-            }
-        } catch (Exception ignored) {}
-        return -1;
-    }
 }
