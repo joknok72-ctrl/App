@@ -199,22 +199,67 @@
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="6dp"
+                android:layout_marginEnd="3dp"
                 android:background="@drawable/btn_secondary"
-                android:text="🎯 كروس هير للتصويب"
+                android:text="🎯 كروس هير"
                 android:textColor="@color/green"
                 android:textStyle="bold"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/btnXhairStyle"
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
                 android:background="@drawable/btn_secondary"
                 android:text="🎨 نقطة — أخضر"
                 android:textColor="@color/text_main"
+                android:textSize="12sp" />
+
+            <!-- v9.0: adjustable crosshair size -->
+            <Button
+                android:id="@+id/btnXhairSize"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="0.7"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="📏 متوسط"
+                android:textColor="@color/text_main"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- RAM Hogs analyzer + Network optimizer row (v9.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnRamHogs"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🐷 محلل التطبيقات الخانقة"
+                android:textColor="@color/green"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnNetOpt"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="📶 مُحسّن الشبكة (DNS)"
+                android:textColor="@color/cyan"
+                android:textStyle="bold"
                 android:textSize="13sp" />
         </LinearLayout>
 

@@ -48,6 +48,9 @@ public class AutoPilotService extends Service {
     private boolean ffInForeground = false;
     private long sessionStart = 0;
     private float sessionMaxTemp = 0;
+    // v9.0: average-FPS tracking for the session report (fed by HudService)
+    private long fpsSum = 0;
+    private int fpsSamples = 0;
     private int prevInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
     private boolean dndApplied = false;
 
@@ -56,7 +59,7 @@ public class AutoPilotService extends Service {
             boolean ffNow = isFreeFireForeground();
             if (ffNow && !ffInForeground) onFreeFireOpened();
             else if (!ffNow && ffInForeground) onFreeFireClosed();
-            if (ffInForeground) trackTemp();
+            if (ffInForeground) { trackTemp(); trackFps(); }
             handler.postDelayed(this, POLL_MS);
         }
     };
@@ -118,6 +121,8 @@ public class AutoPilotService extends Service {
         ffInForeground = true;
         sessionStart = System.currentTimeMillis();
         sessionMaxTemp = 0;
+        fpsSum = 0;
+        fpsSamples = 0;
         trackTemp();
 
         // 1) Game Mode 2.0
@@ -168,10 +173,12 @@ public class AutoPilotService extends Service {
 
         // Save session report
         long durMin = Math.max(1, (System.currentTimeMillis() - sessionStart) / 60_000);
+        int avgFps = fpsSamples > 0 ? (int) (fpsSum / fpsSamples) : 0; // v9.0
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
         sp.edit()
           .putLong("last_session_min", durMin)
           .putFloat("last_session_max_temp", sessionMaxTemp)
+          .putInt("last_session_avg_fps", avgFps)
           .putLong("last_session_end", System.currentTimeMillis())
           .putLong("total_play_min", sp.getLong("total_play_min", 0) + durMin)
           .putInt("session_count", sp.getInt("session_count", 0) + 1)
@@ -207,6 +214,12 @@ public class AutoPilotService extends Service {
             }
         } catch (Exception ignored) {}
         dndApplied = false;
+    }
+
+    /** v9.0: sample HUD's real FPS reading (if the HUD is on) for the session average. */
+    private void trackFps() {
+        int f = HudService.currentFps;
+        if (f > 0) { fpsSum += f; fpsSamples++; }
     }
 
     private void trackTemp() {

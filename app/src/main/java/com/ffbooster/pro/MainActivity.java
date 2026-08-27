@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -90,15 +90,21 @@ public class MainActivity extends Activity {
         btnAutoPilot = findViewById(R.id.btnAutoPilot);
         btnXhair = findViewById(R.id.btnXhair);
         btnXhairStyle = findViewById(R.id.btnXhairStyle);
+        btnXhairSize = findViewById(R.id.btnXhairSize);
+        btnRamHogs = findViewById(R.id.btnRamHogs);
+        btnNetOpt = findViewById(R.id.btnNetOpt);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🎯 جديد v8.0: كروس هير عائم في منتصف الشاشة — دقة رهيبة للنو سكوب والهيب فاير، ما بيأثرش على اللمس (3 أشكال × 5 ألوان)\n" +
-                "• 📊 جديد v8.0: عداد FPS حقيقي في الـ HUD — شوف الفريمات الفعلية وأنت بتلعب (🟢 50+ ممتاز | 🔴 أقل من 30 فيه مشكلة)\n" +
-                "• 🔇 جديد v8.0: الطيار الآلي دلوقتي بيفعّل \"عدم الإزعاج\" تلقائياً أثناء اللعب — مفيش إشعار هيبوظ عليك كلتش (محتاج إذن DND مرة واحدة)\n" +
-                "• ⚡ جديد v8.0: زر \"تسريع FF\" في شريط الإعدادات السريعة — اسحب الشاشة من فوق واضغطه من أي مكان (أضفه بزر القلم ✂)\n" +
+                "• 🐷 جديد v9.0: \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
+                "• 📶 جديد v9.0: \"مُحسّن الشبكة\" — سباق بين 5 مزودين DNS ويطبّق الأسرع لشبكتك بخطوتين — دخول أسرع للماتش وإعادة اتصال أثبت\n" +
+                "• 📏 جديد v9.0: حجم الكروس هير بقى قابل للتعديل (صغير/متوسط/كبير) + متوسط FPS بيتسجل في تقرير الجلسة\n" +
+                "• 🎯 كروس هير عائم في منتصف الشاشة — دقة رهيبة للنو سكوب والهيب فاير، ما بيأثرش على اللمس (3 أشكال × 5 ألوان × 3 أحجام)\n" +
+                "• 📊 عداد FPS حقيقي في الـ HUD — شوف الفريمات الفعلية وأنت بتلعب (🟢 50+ ممتاز | 🔴 أقل من 30 فيه مشكلة)\n" +
+                "• 🔇 الطيار الآلي بيفعّل \"عدم الإزعاج\" تلقائياً أثناء اللعب — مفيش إشعار هيبوظ عليك كلتش (محتاج إذن DND مرة واحدة)\n" +
+                "• ⚡ زر \"تسريع FF\" في شريط الإعدادات السريعة — اسحب الشاشة من فوق واضغطه من أي مكان (أضفه بزر القلم ✂)\n" +
                 "• 🤖 \"الطيار الآلي\" — فعّله مرة واحدة وانسى! أول ما تفتح فري فاير: وضع الألعاب + HUD + الكروس هير يشتغلوا لوحدهم\n" +
                 "• ⚡ جديد v7.0: دبل كليك على الـ HUD وأنت جوة اللعبة = تسريع فوري من غير ما تخرج من الماتش!\n" +
                 "• 🧠 تسريع ذكي تكيفي — التطبيق يقرأ ضغط الرام ويقرر عدد موجات التنظيف لوحده (2←5 موجات)!\n" +
@@ -129,6 +135,9 @@ public class MainActivity extends Activity {
         btnAutoPilot.setOnClickListener(v -> toggleAutoPilot());
         btnXhair.setOnClickListener(v -> toggleCrosshair());
         btnXhairStyle.setOnClickListener(v -> cycleCrosshairStyle());
+        btnXhairSize.setOnClickListener(v -> cycleCrosshairSize());
+        btnRamHogs.setOnClickListener(v -> startActivity(new Intent(this, RamHogsActivity.class)));
+        btnNetOpt.setOnClickListener(v -> startActivity(new Intent(this, NetOptimizerActivity.class)));
 
         refreshStats();
         updateBoostStats();
@@ -561,6 +570,21 @@ public class MainActivity extends Activity {
         ui.postDelayed(this::updateXhairButtons, 500);
     }
 
+    private void cycleCrosshairSize() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int size = (sp.getInt("xhair_size", 1) + 1) % CrosshairService.SIZES.length;
+        sp.edit().putInt("xhair_size", size).apply();
+        Toast.makeText(this, "📏 حجم الكروس هير: " + CrosshairService.SIZE_NAMES[size], Toast.LENGTH_SHORT).show();
+        if (CrosshairService.running) {
+            try {
+                Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+        updateXhairButtons();
+    }
+
     private void cycleCrosshairStyle() {
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
         // Cycle: advance style; when style wraps, advance color too
@@ -594,6 +618,11 @@ public class MainActivity extends Activity {
             int color = sp.getInt("xhair_color", 0) % CrosshairService.COLORS.length;
             btnXhairStyle.setText("🎨 " + CrosshairService.STYLE_NAMES[style] + " — " + CrosshairService.COLOR_NAMES[color]);
         }
+        if (btnXhairSize != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int size = sp.getInt("xhair_size", 1) % CrosshairService.SIZES.length;
+            btnXhairSize.setText("📏 الحجم: " + CrosshairService.SIZE_NAMES[size]);
+        }
     }
 
     // ---------- Play session report (v7.0) ----------
@@ -608,11 +637,14 @@ public class MainActivity extends Activity {
         long lastMin = sp.getLong("last_session_min", 0);
         float maxTemp = sp.getFloat("last_session_max_temp", 0);
         long totalMin = sp.getLong("total_play_min", 0);
+        int avgFps = sp.getInt("last_session_avg_fps", 0); // v9.0
         String tempTxt = maxTemp > 0
                 ? String.format(Locale.US, " | أقصى حرارة: %.1f°م %s", maxTemp, maxTemp >= 42 ? "🔥" : "✅") : "";
+        String fpsTxt = avgFps > 0
+                ? String.format(Locale.US, " | متوسط FPS: %d %s", avgFps, avgFps >= 50 ? "🟢" : avgFps >= 30 ? "🟡" : "🔴") : "";
         tvSession.setText(String.format(Locale.US,
-                "📈 آخر جلسة: %d دقيقة%s\n🎮 إجمالي اللعب: %d دقيقة عبر %d جلسة",
-                lastMin, tempTxt, totalMin, sessions));
+                "📈 آخر جلسة: %d دقيقة%s%s\n🎮 إجمالي اللعب: %d دقيقة عبر %d جلسة",
+                lastMin, tempTxt, fpsTxt, totalMin, sessions));
     }
 
     // ---------- Battery optimization exemption (v7.0) ----------
