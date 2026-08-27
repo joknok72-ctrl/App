@@ -7,7 +7,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Environment;
@@ -44,10 +46,10 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "ffbooster";
 
-    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats;
+    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -82,10 +84,15 @@ public class MainActivity extends Activity {
         btnMeta = findViewById(R.id.btnMeta);
         btnSens = findViewById(R.id.btnSens);
         btnTools = findViewById(R.id.btnTools);
+        btnCombos = findViewById(R.id.btnCombos);
+        btnCodes = findViewById(R.id.btnCodes);
         tvBoostStats = findViewById(R.id.tvBoostStats);
+        tvFfStatus = findViewById(R.id.tvFfStatus);
 
         tvTips.setText(
-                "• 🛠 جديد v3.0: افتح \"أدوات برو\" — مراقبة المعالج الحية + اختصارات ما قبل الرانكد بضغطة واحدة\n" +
+                "• ⚔️ جديد v4.0: \"تشكيلات الشخصيات\" — أقوى 6 كومبوهات لميتا OB54 حسب أسلوب لعبك + دليل رفع الرانك\n" +
+                "• 🎁 جديد v4.0: زر \"أكواد الاستدعاء\" يفتح موقع جارينا الرسمي لاستبدال أكواد الجوائز المجانية\n" +
+                "• 🛠 افتح \"أدوات برو\" — مراقبة المعالج الحية + اختصارات ما قبل الرانكد بضغطة واحدة\n" +
                 "• 🆕 افتح \"تحديث OB54\" لتعرف أقوى أسلحة الميتا الجديدة (MP40 الأول حالياً!)\n" +
                 "• 🎯 طبّق \"حساسيات 2026\" المضبوطة لجهازك لأعلى نسبة هيدشوت\n" +
                 "• فعّل وضع الطيران 5 ثواني ثم أطفئه قبل اللعب لتجديد الشبكة\n" +
@@ -101,9 +108,12 @@ public class MainActivity extends Activity {
         btnMeta.setOnClickListener(v -> startActivity(new Intent(this, MetaActivity.class)));
         btnSens.setOnClickListener(v -> startActivity(new Intent(this, SensitivityActivity.class)));
         btnTools.setOnClickListener(v -> startActivity(new Intent(this, ToolsActivity.class)));
+        btnCombos.setOnClickListener(v -> startActivity(new Intent(this, CombosActivity.class)));
+        btnCodes.setOnClickListener(v -> openRedeemSite());
 
         refreshStats();
         updateBoostStats();
+        detectFreeFire();
     }
 
     @Override
@@ -111,6 +121,7 @@ public class MainActivity extends Activity {
         super.onResume();
         ui.post(statsTick);          // live monitoring while visible
         updateBoostStats();
+        detectFreeFire();
     }
 
     @Override
@@ -148,6 +159,50 @@ public class MainActivity extends Activity {
             float c = temp / 10f;
             String heat = c < 35 ? "✅ ممتازة" : (c < 42 ? "⚠️ متوسطة" : "🔥 مرتفعة — برّد الهاتف!");
             tvBattery.setText(String.format(Locale.US, "🔋 البطارية: %d%%  |  الحرارة: %.1f°م %s", level, c, heat));
+        }
+    }
+
+    // ---------- Free Fire detection (v4.0) ----------
+    private void detectFreeFire() {
+        if (tvFfStatus == null) return;
+        PackageManager pm = getPackageManager();
+        StringBuilder sb = new StringBuilder();
+        boolean found = false;
+
+        String[][] editions = {
+                {FF_PACKAGE, "🔥 فري فاير (العادية)"},
+                {FF_MAX_PACKAGE, "💎 فري فاير MAX"}
+        };
+        for (String[] ed : editions) {
+            try {
+                PackageInfo pi = pm.getPackageInfo(ed[0], 0);
+                found = true;
+                sb.append(ed[1]).append(" — مثبتة ✅\n");
+                sb.append("   الإصدار: ").append(pi.versionName);
+                try {
+                    ApplicationInfo ai = pm.getApplicationInfo(ed[0], 0);
+                    long apkMb = new java.io.File(ai.sourceDir).length() / (1024 * 1024);
+                    if (apkMb > 0) sb.append("  |  حجم APK: ").append(apkMb).append(" MB");
+                } catch (Exception ignored) {}
+                sb.append('\n');
+            } catch (Exception ignored) {}
+        }
+
+        if (found) {
+            sb.append("\n💡 تأكد أن اللعبة محدّثة لآخر إصدار (OB54) من المتجر قبل الرانكد");
+            tvFfStatus.setText(sb.toString().trim());
+        } else {
+            tvFfStatus.setText("❌ فري فاير غير مثبتة على هذا الجهاز!\nثبّت اللعبة من متجر Google Play أولاً لتستفيد من كل مميزات التطبيق");
+        }
+    }
+
+    // ---------- Official redeem codes site (v4.0) ----------
+    private void openRedeemSite() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://reward.ff.garena.com/")));
+            Toast.makeText(this, "🎁 موقع جارينا الرسمي — سجّل دخول بحساب اللعبة واستبدل الأكواد", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر فتح المتصفح", Toast.LENGTH_SHORT).show();
         }
     }
 

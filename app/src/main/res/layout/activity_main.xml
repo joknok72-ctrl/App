@@ -91,6 +91,33 @@
                 android:layout_marginTop="10dp" />
         </LinearLayout>
 
+        <!-- Free Fire status card (v4.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginTop="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔍 حالة فري فاير على جهازك"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvFfStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="13sp"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
         <!-- Boost button -->
         <Button
             android:id="@+id/btnBoost"
@@ -193,6 +220,38 @@
                 android:layout_marginStart="6dp"
                 android:background="@drawable/btn_secondary"
                 android:text="🎯 حساسيات 2026"
+                android:textColor="@color/accent2"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Combos + Redeem codes row (v4.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnCombos"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="⚔️ تشكيلات الشخصيات"
+                android:textColor="@color/accent2"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnCodes"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🎁 أكواد الاستدعاء الرسمية"
                 android:textColor="@color/accent2"
                 android:textStyle="bold"
                 android:textSize="13sp" />
