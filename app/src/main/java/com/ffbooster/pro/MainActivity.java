@@ -44,10 +44,10 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "ffbooster";
 
-    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus;
+    private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -87,12 +87,15 @@ public class MainActivity extends Activity {
         btnGameMode = findViewById(R.id.btnGameMode);
         btnHud = findViewById(R.id.btnHud);
         btnReadiness = findViewById(R.id.btnReadiness);
+        btnAutoPilot = findViewById(R.id.btnAutoPilot);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
+        tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🧠 جديد v6.0: تسريع ذكي تكيفي — التطبيق يقرأ ضغط الرام ويقرر عدد موجات التنظيف لوحده (2←5 موجات)!\n" +
-                "• 📊 جديد v6.0: HUD عائم داخل اللعبة — رام وحرارة مباشرة فوق فري فاير (اسحبه — اضغطه يصغر — مطولاً يقفل)\n" +
+                "• 🤖 جديد v7.0: \"الطيار الآلي\" — فعّله مرة واحدة وانسى! أول ما تفتح فري فاير: وضع الألعاب + HUD يشتغلوا لوحدهم، وأول ما تقفلها يتقفلوا ويتسجل تقرير جلستك\n" +
+                "• ⚡ جديد v7.0: دبل كليك على الـ HUD وأنت جوة اللعبة = تسريع فوري من غير ما تخرج من الماتش!\n" +
+                "• 🧠 تسريع ذكي تكيفي — التطبيق يقرأ ضغط الرام ويقرر عدد موجات التنظيف لوحده (2←5 موجات)!\n" +
                 "• 🏁 جديد v6.0: \"فحص جاهزية الرانكد\" — تقييم شامل (رام+حرارة+بطارية+بينج+جيتر) قبل ما تدخل رانكد\n" +
                 "• 🎮 وضع الألعاب 2.0 — ذكي تكيفي: ينظف كل 12 ثانية لو الرام مخنوقة، ويرتاح لـ 45ث لو الوضع تمام (أوفر للبطارية)\n" +
                 "• ⚔️ \"تشكيلات الشخصيات\" — أقوى 6 كومبوهات لميتا OB54 + دليل رفع الرانك\n" +
@@ -117,12 +120,16 @@ public class MainActivity extends Activity {
         btnGameMode.setOnClickListener(v -> toggleGameMode());
         btnHud.setOnClickListener(v -> toggleHud());
         btnReadiness.setOnClickListener(v -> doReadinessCheck());
+        btnAutoPilot.setOnClickListener(v -> toggleAutoPilot());
 
         refreshStats();
         updateBoostStats();
         detectFreeFire();
         updateGameModeButton();
         updateHudButton();
+        updateAutoPilotButton();
+        updateSessionCard();
+        requestBatteryExemption();
 
         // Android 13+ needs runtime permission for the Game Mode notification
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
@@ -140,6 +147,8 @@ public class MainActivity extends Activity {
         detectFreeFire();
         updateGameModeButton();
         updateHudButton();
+        updateAutoPilotButton();
+        updateSessionCard();
     }
 
     @Override
@@ -462,6 +471,82 @@ public class MainActivity extends Activity {
         } else {
             btnHud.setText("📊 HUD داخل اللعبة");
         }
+    }
+
+    // ---------- Auto-Pilot control (v7.0) ----------
+    private void toggleAutoPilot() {
+        if (AutoPilotService.running) {
+            try { startService(new Intent(this, AutoPilotService.class).setAction(AutoPilotService.ACTION_STOP)); } catch (Exception ignored) {}
+            Toast.makeText(this, "⏹ تم إيقاف الطيار الآلي", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::updateAutoPilotButton, 300);
+            return;
+        }
+        // Needs Usage Access to detect when Free Fire opens
+        if (!AutoPilotService.hasUsageAccess(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الوصول للاستخدام\" لـ FF Booster ثم ارجع وفعّل الطيار الآلي", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS));
+            } catch (Exception e) {
+                Toast.makeText(this, "افتح الإعدادات ← التطبيقات ← وصول خاص ← الوصول للاستخدام", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, AutoPilotService.class).setAction(AutoPilotService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            Toast.makeText(this, "🤖 الطيار الآلي شغّال! افتح فري فاير وكل حاجة هتشتغل لوحدها — مفيش حاجة تاني عليك!", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تشغيل الطيار الآلي", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateAutoPilotButton, 500);
+    }
+
+    private void updateAutoPilotButton() {
+        if (btnAutoPilot == null) return;
+        if (AutoPilotService.running) {
+            btnAutoPilot.setText("🤖 الطيار الآلي شغّال ✅ — اضغط للإيقاف");
+        } else {
+            btnAutoPilot.setText("🤖 تفعيل الطيار الآلي — كل حاجة أوتوماتيك مع فري فاير");
+        }
+    }
+
+    // ---------- Play session report (v7.0) ----------
+    private void updateSessionCard() {
+        if (tvSession == null) return;
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int sessions = sp.getInt("session_count", 0);
+        if (sessions == 0) {
+            tvSession.setText("لسه مفيش جلسات مسجلة — فعّل الطيار الآلي 🤖 والعب، وهتلاقي تقرير جلستك هنا");
+            return;
+        }
+        long lastMin = sp.getLong("last_session_min", 0);
+        float maxTemp = sp.getFloat("last_session_max_temp", 0);
+        long totalMin = sp.getLong("total_play_min", 0);
+        String tempTxt = maxTemp > 0
+                ? String.format(Locale.US, " | أقصى حرارة: %.1f°م %s", maxTemp, maxTemp >= 42 ? "🔥" : "✅") : "";
+        tvSession.setText(String.format(Locale.US,
+                "📈 آخر جلسة: %d دقيقة%s\n🎮 إجمالي اللعب: %d دقيقة عبر %d جلسة",
+                lastMin, tempTxt, totalMin, sessions));
+    }
+
+    // ---------- Battery optimization exemption (v7.0) ----------
+    /** Asks once so Android doesn't kill Game Mode / HUD / Auto-Pilot mid-match. */
+    private void requestBatteryExemption() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT < 23) return;
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                if (!sp.getBoolean("asked_batt_exempt", false)) {
+                    sp.edit().putBoolean("asked_batt_exempt", true).apply();
+                    Intent i = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivity(i);
+                    Toast.makeText(this, "🔋 اسمح للتطبيق يفضل شغّال — عشان وضع الألعاب ما يتقفلش وأنت في نص الماتش!", Toast.LENGTH_LONG).show();
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     // ---------- Ranked readiness check (v6.0) ----------

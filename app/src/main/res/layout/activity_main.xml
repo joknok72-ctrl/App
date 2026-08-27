@@ -163,6 +163,18 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <!-- Auto-Pilot toggle (v7.0) -->
+        <Button
+            android:id="@+id/btnAutoPilot"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_secondary"
+            android:text="🤖 تفعيل الطيار الآلي — كل حاجة أوتوماتيك مع فري فاير"
+            android:textColor="@color/accent2"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
         <!-- Game Mode 2.0 toggle (v6.0) -->
         <Button
             android:id="@+id/btnGameMode"
@@ -312,6 +324,33 @@
             android:textColor="@color/accent2"
             android:textStyle="bold"
             android:textSize="14sp" />
+
+        <!-- Play session report card (v7.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginTop="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📈 تقرير جلسات اللعب"
+                android:textColor="@color/text_main"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSession"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="13sp"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
 
         <!-- Ping result card -->
         <LinearLayout
