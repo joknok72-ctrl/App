@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -86,12 +86,14 @@ public class MainActivity extends Activity {
         btnTools = findViewById(R.id.btnTools);
         btnCombos = findViewById(R.id.btnCombos);
         btnCodes = findViewById(R.id.btnCodes);
+        btnGameMode = findViewById(R.id.btnGameMode);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
 
         tvTips.setText(
-                "• ⚔️ جديد v4.0: \"تشكيلات الشخصيات\" — أقوى 6 كومبوهات لميتا OB54 حسب أسلوب لعبك + دليل رفع الرانك\n" +
-                "• 🎁 جديد v4.0: زر \"أكواد الاستدعاء\" يفتح موقع جارينا الرسمي لاستبدال أكواد الجوائز المجانية\n" +
+                "• 🚀 جديد v5.0: التسريع الآن \"تيربو\" — 3 موجات تنظيف متتالية تصطاد التطبيقات اللي بترجع تفتح نفسها!\n" +
+                "• 🎮 جديد v5.0: \"وضع الألعاب\" — تنظيف تلقائي كل 30 ثانية + مراقبة الحرارة وأنت بتلعب (بيشتغل لوحده مع زر التشغيل)\n" +
+                "• ⚔️ \"تشكيلات الشخصيات\" — أقوى 6 كومبوهات لميتا OB54 + دليل رفع الرانك\n" +
                 "• 🛠 افتح \"أدوات برو\" — مراقبة المعالج الحية + اختصارات ما قبل الرانكد بضغطة واحدة\n" +
                 "• 🆕 افتح \"تحديث OB54\" لتعرف أقوى أسلحة الميتا الجديدة (MP40 الأول حالياً!)\n" +
                 "• 🎯 طبّق \"حساسيات 2026\" المضبوطة لجهازك لأعلى نسبة هيدشوت\n" +
@@ -110,10 +112,19 @@ public class MainActivity extends Activity {
         btnTools.setOnClickListener(v -> startActivity(new Intent(this, ToolsActivity.class)));
         btnCombos.setOnClickListener(v -> startActivity(new Intent(this, CombosActivity.class)));
         btnCodes.setOnClickListener(v -> openRedeemSite());
+        btnGameMode.setOnClickListener(v -> toggleGameMode());
 
         refreshStats();
         updateBoostStats();
         detectFreeFire();
+        updateGameModeButton();
+
+        // Android 13+ needs runtime permission for the Game Mode notification
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 100);
+        }
     }
 
     @Override
@@ -122,6 +133,7 @@ public class MainActivity extends Activity {
         ui.post(statsTick);          // live monitoring while visible
         updateBoostStats();
         detectFreeFire();
+        updateGameModeButton();
     }
 
     @Override
@@ -236,7 +248,48 @@ public class MainActivity extends Activity {
         return mi.availMem / (1024 * 1024);
     }
 
-    // ---------- RAM Boost ----------
+    // ---------- Turbo Boost engine (v5.0) ----------
+    /**
+     * One kill pass over all user apps. Android on 4GB devices restarts
+     * killed processes aggressively, so Turbo runs 3 passes with short
+     * pauses — far more RAM actually stays free for Free Fire.
+     */
+    private int boostPass(ActivityManager am) {
+        int killed = 0;
+        try {
+            PackageManager pm = getPackageManager();
+            List<ApplicationInfo> apps = pm.getInstalledApplications(0);
+            for (ApplicationInfo app : apps) {
+                if ((app.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+                if (app.packageName.equals(getPackageName())) continue;
+                if (app.packageName.equals(FF_PACKAGE) || app.packageName.equals(FF_MAX_PACKAGE)) continue;
+                try {
+                    am.killBackgroundProcesses(app.packageName);
+                    killed++;
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return killed;
+    }
+
+    /** Deletes our own cache dir — every MB counts on a 4GB device. */
+    private void trimOwnCache() {
+        try {
+            java.io.File cache = getCacheDir();
+            java.io.File[] files = cache.listFiles();
+            if (files != null) for (java.io.File f : files) deleteRecursive(f);
+        } catch (Exception ignored) {}
+    }
+
+    private void deleteRecursive(java.io.File f) {
+        if (f.isDirectory()) {
+            java.io.File[] kids = f.listFiles();
+            if (kids != null) for (java.io.File k : kids) deleteRecursive(k);
+        }
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
+    }
+
     private void doBoost() {
         btnBoost.setEnabled(false);
         btnBoost.setText(R.string.boosting);
@@ -244,64 +297,104 @@ public class MainActivity extends Activity {
         final long ramBefore = availRamMb();
 
         executor.execute(() -> {
-            int killed = 0;
             ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-            try {
-                PackageManager pm = getPackageManager();
-                List<ApplicationInfo> apps = pm.getInstalledApplications(0);
-                for (ApplicationInfo app : apps) {
-                    // Skip system apps, ourselves, and Free Fire itself
-                    if ((app.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
-                    if (app.packageName.equals(getPackageName())) continue;
-                    if (app.packageName.equals(FF_PACKAGE) || app.packageName.equals(FF_MAX_PACKAGE)) continue;
-                    try {
-                        am.killBackgroundProcesses(app.packageName);
-                        killed++;
-                    } catch (Exception ignored) {}
-                }
-            } catch (Exception ignored) {}
 
-            // Suggest GC to reclaim memory
+            // ── TURBO: 3 kill passes; pauses let the kernel actually reclaim pages,
+            //    then we catch apps that auto-restarted between passes.
+            int killed = boostPass(am);
+            ui.post(() -> btnBoost.setText("🚀 الموجة 1/3 — تنظيف الخلفية…"));
+            sleep(900);
+
+            killed = Math.max(killed, boostPass(am));
+            ui.post(() -> btnBoost.setText("🚀 الموجة 2/3 — صيد التطبيقات العنيدة…"));
             System.gc();
+            sleep(900);
+
+            killed = Math.max(killed, boostPass(am));
+            ui.post(() -> btnBoost.setText("🚀 الموجة 3/3 — تحرير الكاش…"));
+            trimOwnCache();
+            System.gc();
+            sleep(600);
 
             final int k = killed;
-            ui.postDelayed(() -> {
+            ui.post(() -> {
                 long freed = availRamMb() - ramBefore;
                 recordBoost(freed);
                 btnBoost.setEnabled(true);
                 btnBoost.setText(R.string.boost_btn);
                 tvBoostStatus.setVisibility(View.VISIBLE);
                 String freedTxt = freed > 0 ? " وتحرير ≈" + freed + " MB رام" : "";
-                tvBoostStatus.setText("✅ تم تنظيف " + k + " تطبيق من الخلفية" + freedTxt + " — الرام جاهز لفري فاير!");
+                tvBoostStatus.setText("🚀 تسريع تيربو مكتمل! 3 موجات تنظيف — " + k + " تطبيق" + freedTxt + " — الرام في أقصى حالة لفري فاير!");
                 refreshStats();
                 updateBoostStats();
-            }, 1200);
+            });
         });
     }
 
-    // ---------- Launch Free Fire ----------
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+    }
+
+    // ---------- Launch Free Fire (v5.0: turbo + auto Game Mode) ----------
     private void launchFreeFire() {
         PackageManager pm = getPackageManager();
         Intent i = pm.getLaunchIntentForPackage(FF_PACKAGE);
         if (i == null) i = pm.getLaunchIntentForPackage(FF_MAX_PACKAGE);
         if (i != null) {
-            // Boost first, then launch
-            Toast.makeText(this, "⚡ جاري التسريع ثم التشغيل…", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "🚀 تسريع تيربو + تفعيل وضع الألعاب ثم التشغيل…", Toast.LENGTH_SHORT).show();
             final Intent launch = i;
             executor.execute(() -> {
                 ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-                try {
-                    for (ApplicationInfo app : getPackageManager().getInstalledApplications(0)) {
-                        if ((app.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
-                        if (app.packageName.equals(getPackageName())) continue;
-                        if (app.packageName.startsWith("com.dts.")) continue;
-                        try { am.killBackgroundProcesses(app.packageName); } catch (Exception ignored) {}
-                    }
-                } catch (Exception ignored) {}
-                ui.post(() -> startActivity(launch));
+                // Two quick turbo passes before launching for maximum free RAM
+                boostPass(am);
+                sleep(700);
+                boostPass(am);
+                System.gc();
+                ui.post(() -> {
+                    startGameMode();      // keep boosting in background while playing
+                    startActivity(launch);
+                });
             });
         } else {
             Toast.makeText(this, R.string.ff_not_found, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // ---------- Game Mode service control (v5.0) ----------
+    private void startGameMode() {
+        try {
+            Intent svc = new Intent(this, GameModeService.class).setAction(GameModeService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            updateGameModeButton();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تفعيل وضع الألعاب", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopGameMode() {
+        try {
+            startService(new Intent(this, GameModeService.class).setAction(GameModeService.ACTION_STOP));
+        } catch (Exception ignored) {}
+        ui.postDelayed(this::updateGameModeButton, 300);
+    }
+
+    private void toggleGameMode() {
+        if (GameModeService.running) {
+            stopGameMode();
+            Toast.makeText(this, "⏹ تم إيقاف وضع الألعاب", Toast.LENGTH_SHORT).show();
+        } else {
+            startGameMode();
+            Toast.makeText(this, "🎮 وضع الألعاب شغّال! تنظيف تلقائي كل 30 ثانية + مراقبة الحرارة أثناء اللعب", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void updateGameModeButton() {
+        if (btnGameMode == null) return;
+        if (GameModeService.running) {
+            btnGameMode.setText("⏹ إيقاف وضع الألعاب (شغّال ✅)");
+        } else {
+            btnGameMode.setText("🎮 تفعيل وضع الألعاب — تنظيف تلقائي أثناء اللعب");
         }
     }
 

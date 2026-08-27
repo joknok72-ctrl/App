@@ -163,6 +163,18 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <!-- Game Mode toggle (v5.0) -->
+        <Button
+            android:id="@+id/btnGameMode"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_secondary"
+            android:text="🎮 تفعيل وضع الألعاب — تنظيف تلقائي أثناء اللعب"
+            android:textColor="@color/green"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
         <!-- Ping + GFX row -->
         <LinearLayout
             android:layout_width="match_parent"

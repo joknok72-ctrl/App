@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FF Booster Pro</string>
-    <string name="subtitle">الإصدار 4.0 — كل شيء لفري فاير 🔥 | مخصص لهاتف Realme C25Y</string>
+    <string name="subtitle">الإصدار 5.0 — محرك تيربو 🚀 + وضع الألعاب | مخصص لهاتف Realme C25Y</string>
     <string name="device_card_title">📱 جهازك</string>
     <string name="boost_btn">⚡ تسريع فائق الآن</string>
     <string name="boosting">جاري التسريع…</string>
