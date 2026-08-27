@@ -163,17 +163,49 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Game Mode toggle (v5.0) -->
+        <!-- Game Mode 2.0 toggle (v6.0) -->
         <Button
             android:id="@+id/btnGameMode"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="12dp"
             android:background="@drawable/btn_secondary"
-            android:text="🎮 تفعيل وضع الألعاب — تنظيف تلقائي أثناء اللعب"
+            android:text="🎮 وضع الألعاب 2.0 — تنظيف ذكي تكيفي أثناء اللعب"
             android:textColor="@color/green"
             android:textStyle="bold"
             android:textSize="14sp" />
+
+        <!-- HUD + Ranked readiness row (v6.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnHud"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="📊 HUD داخل اللعبة"
+                android:textColor="@color/cyan"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnReadiness"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🏁 فحص جاهزية الرانكد"
+                android:textColor="@color/cyan"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
 
         <!-- Ping + GFX row -->
         <LinearLayout

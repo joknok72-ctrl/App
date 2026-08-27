@@ -21,12 +21,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Game Mode foreground service (v5.0) — the real speed engine.
+ * Game Mode 2.0 foreground service (v6.0) — the real speed engine, now ADAPTIVE.
  *
  * While the player is in Free Fire this service keeps working in the
- * background: every 30 seconds it silently kills background apps that
- * crept back in (Android restarts them aggressively on 4GB devices),
- * and it monitors battery temperature, warning through the notification
+ * background, but instead of a fixed 30s interval it reads RAM pressure
+ * each cycle and adapts:
+ *   • RAM ≥ 90% used → clean every 12s (emergency — lag imminent)
+ *   • RAM ≥ 75% used → clean every 20s (high pressure)
+ *   • otherwise      → clean every 45s (relaxed — saves battery/CPU)
+ * It also monitors battery temperature, warning through the notification
  * when the phone gets hot enough to throttle the Unisoc T610.
  */
 public class GameModeService extends Service {
@@ -36,7 +39,10 @@ public class GameModeService extends Service {
 
     private static final String CHANNEL_ID = "gamemode";
     private static final int NOTIF_ID = 1001;
-    private static final long BOOST_INTERVAL_MS = 30_000;
+    // Adaptive intervals (v6.0)
+    private static final long INTERVAL_EMERGENCY_MS = 12_000;
+    private static final long INTERVAL_HIGH_MS = 20_000;
+    private static final long INTERVAL_RELAXED_MS = 45_000;
 
     public static volatile boolean running = false;
 
@@ -44,19 +50,47 @@ public class GameModeService extends Service {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private int cycles = 0;
     private int totalKilled = 0;
+    private volatile int lastRamPct = 0;
+    private volatile long nextInterval = INTERVAL_RELAXED_MS;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             executor.execute(() -> {
+                int ramPct = readRamUsedPct();
+                lastRamPct = ramPct;
+                // Adaptive engine: clean harder when RAM pressure is high
                 int killed = silentBoost();
+                if (ramPct >= 90) {
+                    // Emergency: second pass to catch auto-restarting apps
+                    try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+                    killed += silentBoost();
+                    nextInterval = INTERVAL_EMERGENCY_MS;
+                } else if (ramPct >= 75) {
+                    nextInterval = INTERVAL_HIGH_MS;
+                } else {
+                    nextInterval = INTERVAL_RELAXED_MS;
+                }
                 totalKilled += killed;
                 cycles++;
                 float temp = readBatteryTemp();
-                handler.post(() -> updateNotification(temp));
+                handler.post(() -> {
+                    updateNotification(temp);
+                    handler.removeCallbacks(tick);
+                    handler.postDelayed(tick, nextInterval);
+                });
             });
-            handler.postDelayed(this, BOOST_INTERVAL_MS);
         }
     };
+
+    private int readRamUsedPct() {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            long total = mi.totalMem, avail = mi.availMem;
+            return (int) ((total - avail) * 100 / Math.max(total, 1));
+        } catch (Exception e) { return 0; }
+    }
 
     @Override
     public void onCreate() {
@@ -73,7 +107,7 @@ public class GameModeService extends Service {
         running = true;
         cycles = 0;
         totalKilled = 0;
-        startForeground(NOTIF_ID, buildNotification("🎮 وضع الألعاب شغّال — تنظيف تلقائي كل 30 ثانية", false));
+        startForeground(NOTIF_ID, buildNotification("🎮 وضع الألعاب 2.0 شغّال — تنظيف ذكي تكيفي حسب ضغط الرام", false));
         handler.removeCallbacks(tick);
         handler.post(tick);
         return START_STICKY;
@@ -158,13 +192,16 @@ public class GameModeService extends Service {
     private void updateNotification(float temp) {
         boolean hot = temp >= 42;
         String tempTxt = temp > 0 ? String.format(Locale.US, "%.1f°م", temp) : "غير متاح";
+        String mode = lastRamPct >= 90 ? "🔴 طوارئ (كل 12ث)" : (lastRamPct >= 75 ? "🟡 مكثّف (كل 20ث)" : "🟢 مسترخي (كل 45ث)");
         String text;
         if (hot) {
             text = "درجة الحرارة " + tempTxt + " — المعالج هيقلل الفريمات! وقّف اللعب 5 دقايق أو شيل الجراب"
-                    + "\nدورات التنظيف: " + cycles + " | تطبيقات منظفة: " + totalKilled;
+                    + "\nالوضع الذكي: " + mode + " | الرام: " + lastRamPct + "%"
+                    + "\nدورات: " + cycles + " | تطبيقات منظفة: " + totalKilled;
         } else {
-            text = "تنظيف تلقائي شغّال ✅ الحرارة: " + tempTxt
-                    + "\nدورات التنظيف: " + cycles + " | تطبيقات منظفة: " + totalKilled;
+            text = "تنظيف ذكي شغّال ✅ الحرارة: " + tempTxt + " | الرام: " + lastRamPct + "%"
+                    + "\nالوضع الذكي: " + mode
+                    + "\nدورات: " + cycles + " | تطبيقات منظفة: " + totalKilled;
         }
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.notify(NOTIF_ID, buildNotification(text, hot));
