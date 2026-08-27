@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -93,14 +93,19 @@ public class MainActivity extends Activity {
         btnXhairSize = findViewById(R.id.btnXhairSize);
         btnRamHogs = findViewById(R.id.btnRamHogs);
         btnNetOpt = findViewById(R.id.btnNetOpt);
+        btnAim = findViewById(R.id.btnAim);
+        btnHistory = findViewById(R.id.btnHistory);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🐷 جديد v9.0: \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
-                "• 📶 جديد v9.0: \"مُحسّن الشبكة\" — سباق بين 5 مزودين DNS ويطبّق الأسرع لشبكتك بخطوتين — دخول أسرع للماتش وإعادة اتصال أثبت\n" +
-                "• 📏 جديد v9.0: حجم الكروس هير بقى قابل للتعديل (صغير/متوسط/كبير) + متوسط FPS بيتسجل في تقرير الجلسة\n" +
+                "• 🎯 جديد v10.0: \"تمرين الإيم\" — 20 هدف بيقيسوا رد فعلك ودقتك برتب زي اللعبة (برونز←هيروك) — العب 2-3 جولات إحماء قبل الرانكد!\n" +
+                "• 📜 جديد v10.0: \"سجل الجلسات\" — آخر 10 جلسات بالحرارة والـ FPS + تحليل اتجاه: الجهاز بيسخن أكتر ولا بيتحسن؟\n" +
+                "• ⚡ جديد v10.0: ويدجت للشاشة الرئيسية — مطولاً على الشاشة ← ويدجت ← \"FF Booster\" — تسريع بلمسة واحدة من غير فتح التطبيق!\n" +
+                "• 🐷 \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
+                "• 📶 \"مُحسّن الشبكة\" — سباق بين 5 مزودين DNS ويطبّق الأسرع لشبكتك بخطوتين — دخول أسرع للماتش وإعادة اتصال أثبت\n" +
+                "• 📏 حجم الكروس هير قابل للتعديل (صغير/متوسط/كبير) + متوسط FPS بيتسجل في تقرير الجلسة\n" +
                 "• 🎯 كروس هير عائم في منتصف الشاشة — دقة رهيبة للنو سكوب والهيب فاير، ما بيأثرش على اللمس (3 أشكال × 5 ألوان × 3 أحجام)\n" +
                 "• 📊 عداد FPS حقيقي في الـ HUD — شوف الفريمات الفعلية وأنت بتلعب (🟢 50+ ممتاز | 🔴 أقل من 30 فيه مشكلة)\n" +
                 "• 🔇 الطيار الآلي بيفعّل \"عدم الإزعاج\" تلقائياً أثناء اللعب — مفيش إشعار هيبوظ عليك كلتش (محتاج إذن DND مرة واحدة)\n" +
@@ -138,6 +143,8 @@ public class MainActivity extends Activity {
         btnXhairSize.setOnClickListener(v -> cycleCrosshairSize());
         btnRamHogs.setOnClickListener(v -> startActivity(new Intent(this, RamHogsActivity.class)));
         btnNetOpt.setOnClickListener(v -> startActivity(new Intent(this, NetOptimizerActivity.class)));
+        btnAim.setOnClickListener(v -> startActivity(new Intent(this, AimTrainerActivity.class)));
+        btnHistory.setOnClickListener(v -> startActivity(new Intent(this, SessionHistoryActivity.class)));
 
         refreshStats();
         updateBoostStats();

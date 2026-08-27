@@ -263,6 +263,38 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Aim Trainer + Session History row (v10.0) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnAim"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🎯 تمرين الإيم — إحماء قبل الرانكد"
+                android:textColor="@color/accent2"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnHistory"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="📜 سجل الجلسات"
+                android:textColor="@color/green"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- HUD + Ranked readiness row (v6.0) -->
         <LinearLayout
             android:layout_width="match_parent"
