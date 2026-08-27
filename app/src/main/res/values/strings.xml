@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FF Booster Pro</string>
-    <string name="subtitle">الإصدار 7.0 — الطيار الآلي 🤖 + HUD 2.0 بتسريع فوري ⚡ | مخصص لهاتف Realme C25Y</string>
+    <string name="subtitle">الإصدار 8.0 — كروس هير 🎯 + عداد FPS 📊 + كتم إشعارات تلقائي 🔇 | مخصص لهاتف Realme C25Y</string>
     <string name="device_card_title">📱 جهازك</string>
     <string name="boost_btn">🧠 تسريع ذكي الآن</string>
     <string name="boosting">جاري التسريع…</string>

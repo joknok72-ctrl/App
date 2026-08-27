@@ -24,9 +24,11 @@ import android.os.Looper;
  * The moment Free Fire comes to the front it automatically:
  *   1. starts Game Mode 2.0 (adaptive background cleaning)
  *   2. shows the in-game HUD (if overlay permission granted)
- *   3. starts a play-session recorder (duration + max temperature)
- * When Free Fire goes to the background/closes it stops both services
- * and saves a session report shown in the main screen.
+ *   3. shows the crosshair overlay (if the user enabled it)
+ *   4. enables Do-Not-Disturb so no notification ruins the match (v8.0)
+ *   5. starts a play-session recorder (duration + max temperature)
+ * When Free Fire goes to the background/closes it stops the services,
+ * restores the previous notification filter, and saves a session report.
  *
  * Polling is a light 4s UsageEvents query — negligible battery cost.
  */
@@ -46,6 +48,8 @@ public class AutoPilotService extends Service {
     private boolean ffInForeground = false;
     private long sessionStart = 0;
     private float sessionMaxTemp = 0;
+    private int prevInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
+    private boolean dndApplied = false;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -124,15 +128,31 @@ public class AutoPilotService extends Service {
         } catch (Exception ignored) {}
 
         // 2) In-game HUD (only if overlay permission granted)
+        boolean overlayOk = Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(this);
         try {
-            if (Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(this)) {
+            if (overlayOk) {
                 Intent hud = new Intent(this, HudService.class).setAction(HudService.ACTION_START);
                 if (Build.VERSION.SDK_INT >= 26) startForegroundService(hud);
                 else startService(hud);
             }
         } catch (Exception ignored) {}
 
-        updateNotification("🎮 فري فاير مفتوحة! ✅ وضع الألعاب + HUD اشتغلوا تلقائياً — العب براحتك");
+        // 3) Crosshair overlay if the user enabled it (v8.0)
+        try {
+            SharedPreferences sp0 = getSharedPreferences(PREFS, MODE_PRIVATE);
+            if (overlayOk && sp0.getBoolean("xhair_enabled", false)) {
+                Intent xh = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+                if (Build.VERSION.SDK_INT >= 26) startForegroundService(xh);
+                else startService(xh);
+            }
+        } catch (Exception ignored) {}
+
+        // 4) Auto-DND: silence notifications during the match (v8.0)
+        applyDnd();
+
+        updateNotification("🎮 فري فاير مفتوحة! ✅ وضع الألعاب + HUD"
+                + (dndApplied ? " + كتم الإشعارات 🔇" : "")
+                + " اشتغلوا تلقائياً — العب براحتك");
     }
 
     private void onFreeFireClosed() {
@@ -141,6 +161,10 @@ public class AutoPilotService extends Service {
         // Stop the helpers
         try { startService(new Intent(this, GameModeService.class).setAction(GameModeService.ACTION_STOP)); } catch (Exception ignored) {}
         try { startService(new Intent(this, HudService.class).setAction(HudService.ACTION_STOP)); } catch (Exception ignored) {}
+        try { startService(new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_STOP)); } catch (Exception ignored) {}
+
+        // Restore notifications exactly as they were (v8.0)
+        restoreDnd();
 
         // Save session report
         long durMin = Math.max(1, (System.currentTimeMillis() - sessionStart) / 60_000);
@@ -157,6 +181,32 @@ public class AutoPilotService extends Service {
                 ? String.format(java.util.Locale.US, " | أقصى حرارة: %.1f°م", sessionMaxTemp) : "";
         updateNotification("📈 جلسة انتهت: " + durMin + " دقيقة" + tempTxt
                 + "\n🤖 الطيار الآلي مستعد للجلسة الجاية");
+    }
+
+    // ---------- Auto-DND (v8.0) ----------
+    private void applyDnd() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null && nm.isNotificationPolicyAccessGranted()) {
+                prevInterruptionFilter = nm.getCurrentInterruptionFilter();
+                if (prevInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL) {
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+                    dndApplied = true;
+                }
+            }
+        } catch (Exception ignored) { dndApplied = false; }
+    }
+
+    private void restoreDnd() {
+        try {
+            if (dndApplied) {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null && nm.isNotificationPolicyAccessGranted()) {
+                    nm.setInterruptionFilter(prevInterruptionFilter);
+                }
+            }
+        } catch (Exception ignored) {}
+        dndApplied = false;
     }
 
     private void trackTemp() {

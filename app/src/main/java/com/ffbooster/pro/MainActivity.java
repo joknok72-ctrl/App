@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -88,12 +88,18 @@ public class MainActivity extends Activity {
         btnHud = findViewById(R.id.btnHud);
         btnReadiness = findViewById(R.id.btnReadiness);
         btnAutoPilot = findViewById(R.id.btnAutoPilot);
+        btnXhair = findViewById(R.id.btnXhair);
+        btnXhairStyle = findViewById(R.id.btnXhairStyle);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🤖 جديد v7.0: \"الطيار الآلي\" — فعّله مرة واحدة وانسى! أول ما تفتح فري فاير: وضع الألعاب + HUD يشتغلوا لوحدهم، وأول ما تقفلها يتقفلوا ويتسجل تقرير جلستك\n" +
+                "• 🎯 جديد v8.0: كروس هير عائم في منتصف الشاشة — دقة رهيبة للنو سكوب والهيب فاير، ما بيأثرش على اللمس (3 أشكال × 5 ألوان)\n" +
+                "• 📊 جديد v8.0: عداد FPS حقيقي في الـ HUD — شوف الفريمات الفعلية وأنت بتلعب (🟢 50+ ممتاز | 🔴 أقل من 30 فيه مشكلة)\n" +
+                "• 🔇 جديد v8.0: الطيار الآلي دلوقتي بيفعّل \"عدم الإزعاج\" تلقائياً أثناء اللعب — مفيش إشعار هيبوظ عليك كلتش (محتاج إذن DND مرة واحدة)\n" +
+                "• ⚡ جديد v8.0: زر \"تسريع FF\" في شريط الإعدادات السريعة — اسحب الشاشة من فوق واضغطه من أي مكان (أضفه بزر القلم ✂)\n" +
+                "• 🤖 \"الطيار الآلي\" — فعّله مرة واحدة وانسى! أول ما تفتح فري فاير: وضع الألعاب + HUD + الكروس هير يشتغلوا لوحدهم\n" +
                 "• ⚡ جديد v7.0: دبل كليك على الـ HUD وأنت جوة اللعبة = تسريع فوري من غير ما تخرج من الماتش!\n" +
                 "• 🧠 تسريع ذكي تكيفي — التطبيق يقرأ ضغط الرام ويقرر عدد موجات التنظيف لوحده (2←5 موجات)!\n" +
                 "• 🏁 جديد v6.0: \"فحص جاهزية الرانكد\" — تقييم شامل (رام+حرارة+بطارية+بينج+جيتر) قبل ما تدخل رانكد\n" +
@@ -121,6 +127,8 @@ public class MainActivity extends Activity {
         btnHud.setOnClickListener(v -> toggleHud());
         btnReadiness.setOnClickListener(v -> doReadinessCheck());
         btnAutoPilot.setOnClickListener(v -> toggleAutoPilot());
+        btnXhair.setOnClickListener(v -> toggleCrosshair());
+        btnXhairStyle.setOnClickListener(v -> cycleCrosshairStyle());
 
         refreshStats();
         updateBoostStats();
@@ -129,6 +137,7 @@ public class MainActivity extends Activity {
         updateHudButton();
         updateAutoPilotButton();
         updateSessionCard();
+        updateXhairButtons();
         requestBatteryExemption();
 
         // Android 13+ needs runtime permission for the Game Mode notification
@@ -149,6 +158,7 @@ public class MainActivity extends Activity {
         updateHudButton();
         updateAutoPilotButton();
         updateSessionCard();
+        updateXhairButtons();
     }
 
     @Override
@@ -496,6 +506,16 @@ public class MainActivity extends Activity {
             if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
             else startService(svc);
             Toast.makeText(this, "🤖 الطيار الآلي شغّال! افتح فري فاير وكل حاجة هتشتغل لوحدها — مفيش حاجة تاني عليك!", Toast.LENGTH_LONG).show();
+            // One-time ask for DND access so Auto-Pilot can silence notifications mid-match (v8.0)
+            try {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                if (nm != null && !nm.isNotificationPolicyAccessGranted() && !sp.getBoolean("asked_dnd", false)) {
+                    sp.edit().putBoolean("asked_dnd", true).apply();
+                    Toast.makeText(this, "🔇 اختياري: فعّل إذن \"عدم الإزعاج\" لـ FF Booster — عشان الطيار الآلي يكتم الإشعارات وأنت بتلعب", Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+                }
+            } catch (Exception ignored) {}
         } catch (Exception e) {
             Toast.makeText(this, "تعذر تشغيل الطيار الآلي", Toast.LENGTH_SHORT).show();
         }
@@ -508,6 +528,71 @@ public class MainActivity extends Activity {
             btnAutoPilot.setText("🤖 الطيار الآلي شغّال ✅ — اضغط للإيقاف");
         } else {
             btnAutoPilot.setText("🤖 تفعيل الطيار الآلي — كل حاجة أوتوماتيك مع فري فاير");
+        }
+    }
+
+    // ---------- Crosshair control (v8.0) ----------
+    private void toggleCrosshair() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (CrosshairService.running) {
+            try { startService(new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_STOP)); } catch (Exception ignored) {}
+            sp.edit().putBoolean("xhair_enabled", false).apply();
+            Toast.makeText(this, "⏹ تم إخفاء الكروس هير", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::updateXhairButtons, 300);
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" ثم ارجع وفعّل الكروس هير", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {}
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            sp.edit().putBoolean("xhair_enabled", true).apply();
+            Toast.makeText(this, "🎯 الكروس هير ظهر في منتصف الشاشة — ما بيأثرش على اللمس إطلاقاً! ممتاز للنو سكوب", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تشغيل الكروس هير", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateXhairButtons, 500);
+    }
+
+    private void cycleCrosshairStyle() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        // Cycle: advance style; when style wraps, advance color too
+        int style = (sp.getInt("xhair_style", 0) + 1) % CrosshairService.STYLE_NAMES.length;
+        int color = sp.getInt("xhair_color", 0);
+        if (style == 0) color = (color + 1) % CrosshairService.COLORS.length;
+        sp.edit().putInt("xhair_style", style).putInt("xhair_color", color).apply();
+        Toast.makeText(this, "🎯 الشكل: " + CrosshairService.STYLE_NAMES[style]
+                + " | اللون: " + CrosshairService.COLOR_NAMES[color], Toast.LENGTH_SHORT).show();
+        // If showing, restart so the view redraws with the new style
+        if (CrosshairService.running) {
+            try {
+                Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+        updateXhairButtons();
+    }
+
+    private void updateXhairButtons() {
+        if (btnXhair == null) return;
+        if (CrosshairService.running) {
+            btnXhair.setText("⏹ إخفاء الكروس هير (ظاهر ✅)");
+        } else {
+            btnXhair.setText("🎯 كروس هير للتصويب");
+        }
+        if (btnXhairStyle != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int style = sp.getInt("xhair_style", 0) % CrosshairService.STYLE_NAMES.length;
+            int color = sp.getInt("xhair_color", 0) % CrosshairService.COLORS.length;
+            btnXhairStyle.setText("🎨 " + CrosshairService.STYLE_NAMES[style] + " — " + CrosshairService.COLOR_NAMES[color]);
         }
     }
 

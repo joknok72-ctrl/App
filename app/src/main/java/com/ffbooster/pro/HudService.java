@@ -28,9 +28,10 @@ import android.widget.TextView;
 import java.util.Locale;
 
 /**
- * Floating in-game HUD 2.0 (v7.0) — a tiny draggable overlay that stays on
- * top of Free Fire showing live free RAM, battery temperature, battery level
- * and a play-session timer.
+ * Floating in-game HUD 3.0 (v8.0) — a tiny draggable overlay that stays on
+ * top of Free Fire showing a REAL display FPS counter (via Choreographer
+ * frame callbacks), live free RAM, battery temperature, battery level and a
+ * play-session timer.
  * Tap = collapse/expand. DOUBLE-TAP = instant RAM boost without leaving the
  * game. Drag to move anywhere. Long-press = close.
  *
@@ -54,6 +55,40 @@ public class HudService extends Service {
     private boolean expanded = true;
     private long sessionStart = 0;
     private volatile boolean boosting = false;
+
+    // ---- Real FPS counter via Choreographer (v8.0) ----
+    // Counts display vsync frames delivered to our overlay window. When the
+    // system is under heavy load (game dropping frames) the display pipeline
+    // slows and this reflects real perceived smoothness.
+    private volatile int fps = 0;
+    private int frameCount = 0;
+    private long fpsWindowStart = 0;
+    private android.view.Choreographer.FrameCallback frameCb;
+
+    private void startFpsCounter() {
+        fpsWindowStart = System.nanoTime();
+        frameCount = 0;
+        frameCb = new android.view.Choreographer.FrameCallback() {
+            @Override public void doFrame(long frameTimeNanos) {
+                frameCount++;
+                long elapsed = frameTimeNanos - fpsWindowStart;
+                if (elapsed >= 1_000_000_000L) {
+                    fps = (int) (frameCount * 1_000_000_000L / elapsed);
+                    frameCount = 0;
+                    fpsWindowStart = frameTimeNanos;
+                }
+                if (running) android.view.Choreographer.getInstance().postFrameCallback(this);
+            }
+        };
+        android.view.Choreographer.getInstance().postFrameCallback(frameCb);
+    }
+
+    private void stopFpsCounter() {
+        if (frameCb != null) {
+            try { android.view.Choreographer.getInstance().removeFrameCallback(frameCb); } catch (Exception ignored) {}
+            frameCb = null;
+        }
+    }
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -82,6 +117,7 @@ public class HudService extends Service {
         if (hudView == null) addHud();
         if (sessionStart == 0) sessionStart = System.currentTimeMillis();
         running = true;
+        if (frameCb == null) startFpsCounter();
         handler.removeCallbacks(tick);
         handler.post(tick);
         return START_STICKY;
@@ -230,12 +266,14 @@ public class HudService extends Service {
         String tempIcon = temp >= 42 ? "🔥" : (temp >= 38 ? "🟡" : "❄");
 
         long sessMin = sessionStart > 0 ? (System.currentTimeMillis() - sessionStart) / 60_000 : 0;
+        int f = fps;
+        String fpsIcon = f >= 50 ? "🟢" : (f >= 30 ? "🟡" : "🔴");
         String text;
         if (expanded) {
-            text = String.format(Locale.US, "%s RAM %dMB (%d%%)\n%s %.1f°C  🔋%d%%  ⏱%dد",
-                    ramIcon, availMb, usedPct, tempIcon, temp, level, sessMin);
+            text = String.format(Locale.US, "%s %dFPS  %s RAM %dMB (%d%%)\n%s %.1f°C  🔋%d%%  ⏱%dد",
+                    fpsIcon, f, ramIcon, availMb, usedPct, tempIcon, temp, level, sessMin);
         } else {
-            text = ramIcon + " " + availMb;
+            text = fpsIcon + f + " " + ramIcon + availMb;
         }
         hudView.setText(text);
 
@@ -274,6 +312,7 @@ public class HudService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        stopFpsCounter();
         handler.removeCallbacks(tick);
         if (hudView != null && wm != null) {
             try { wm.removeView(hudView); } catch (Exception ignored) {}
