@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset, btnXhairCal;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -98,6 +98,7 @@ public class MainActivity extends Activity {
         btnHsTrainer = findViewById(R.id.btnHsTrainer);
         btnHsGuide = findViewById(R.id.btnHsGuide);
         btnXhairOffset = findViewById(R.id.btnXhairOffset);
+        btnXhairCal = findViewById(R.id.btnXhairCal);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
@@ -154,6 +155,7 @@ public class MainActivity extends Activity {
         btnHsTrainer.setOnClickListener(v -> startActivity(new Intent(this, HeadshotTrainerActivity.class)));
         btnHsGuide.setOnClickListener(v -> startActivity(new Intent(this, HeadshotGuideActivity.class)));
         btnXhairOffset.setOnClickListener(v -> cycleCrosshairOffset());
+        btnXhairCal.setOnClickListener(v -> startCrosshairCalibration());
 
         refreshStats();
         updateBoostStats();
@@ -582,6 +584,29 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "🎯 الكروس هير ظهر في منتصف الشاشة — ما بيأثرش على اللمس إطلاقاً! ممتاز للنو سكوب", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "تعذر تشغيل الكروس هير", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateXhairButtons, 500);
+    }
+
+    // v12.0: launch live calibration — arrow panel appears over the game so the
+    // user can nudge the dot until it sits EXACTLY on FF's native crosshair.
+    private void startCrosshairCalibration() {
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" الأول", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {}
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_CALIBRATE);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("xhair_enabled", true).apply();
+            Toast.makeText(this, "🛠 افتح فري فاير الآن — استخدم الأسهم تحت الشاشة لتحريك النقطة حتى تنطبق على كروس هير اللعبة بالظبط، ثم اضغط ✔ تم", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر فتح المعايرة", Toast.LENGTH_SHORT).show();
         }
         ui.postDelayed(this::updateXhairButtons, 500);
     }

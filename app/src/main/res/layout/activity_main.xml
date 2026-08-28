@@ -295,17 +295,37 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- Crosshair head-level offset (v11.0) -->
-        <Button
-            android:id="@+id/btnXhairOffset"
+        <!-- Crosshair head-level offset (v11.0) + calibration (v12.0) -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/btn_secondary"
-            android:text="↕ الارتفاع: وسط (عادي)"
-            android:textColor="@color/green"
-            android:textStyle="bold"
-            android:textSize="13sp" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnXhairOffset"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="↕ الارتفاع: وسط (عادي)"
+                android:textColor="@color/green"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnXhairCal"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/btn_secondary"
+                android:text="🛠 معايرة الكروس هير"
+                android:textColor="@color/cyan"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
 
         <!-- Aim Trainer + Session History row (v10.0) -->
         <LinearLayout
