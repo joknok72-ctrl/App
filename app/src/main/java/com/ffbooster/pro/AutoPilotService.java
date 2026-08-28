@@ -184,6 +184,11 @@ public class AutoPilotService extends Service {
           .putInt("session_count", sp.getInt("session_count", 0) + 1)
           .apply();
 
+        // v10.0: append to the rolling 10-session history log
+        try {
+            SessionHistoryActivity.append(sp, System.currentTimeMillis(), durMin, sessionMaxTemp, avgFps);
+        } catch (Exception ignored) {}
+
         String tempTxt = sessionMaxTemp > 0
                 ? String.format(java.util.Locale.US, " | أقصى حرارة: %.1f°م", sessionMaxTemp) : "";
         updateNotification("📈 جلسة انتهت: " + durMin + " دقيقة" + tempTxt

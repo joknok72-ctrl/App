@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset, btnXhairCal, btnLines, btnLinesMode, btnLinesAlpha;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -93,14 +93,29 @@ public class MainActivity extends Activity {
         btnXhairSize = findViewById(R.id.btnXhairSize);
         btnRamHogs = findViewById(R.id.btnRamHogs);
         btnNetOpt = findViewById(R.id.btnNetOpt);
+        btnAim = findViewById(R.id.btnAim);
+        btnHistory = findViewById(R.id.btnHistory);
+        btnHsTrainer = findViewById(R.id.btnHsTrainer);
+        btnHsGuide = findViewById(R.id.btnHsGuide);
+        btnXhairOffset = findViewById(R.id.btnXhairOffset);
+        btnXhairCal = findViewById(R.id.btnXhairCal);
+        btnLines = findViewById(R.id.btnLines);
+        btnLinesMode = findViewById(R.id.btnLinesMode);
+        btnLinesAlpha = findViewById(R.id.btnLinesAlpha);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🐷 جديد v9.0: \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
-                "• 📶 جديد v9.0: \"مُحسّن الشبكة\" — سباق بين 5 مزودين DNS ويطبّق الأسرع لشبكتك بخطوتين — دخول أسرع للماتش وإعادة اتصال أثبت\n" +
-                "• 📏 جديد v9.0: حجم الكروس هير بقى قابل للتعديل (صغير/متوسط/كبير) + متوسط FPS بيتسجل في تقرير الجلسة\n" +
+                "• 🎯 جديد v11.0: \"مدرب الدراغ هيدشوت\" — بيدربك على حركة السحب الحقيقية (جسم←راس) بتاعة فري فاير — 15 عدو بأحجام مختلفة + قياس نسبة الهيدشوت وسرعة الدراغ!\n" +
+                "• 📖 جديد v11.0: \"دليل الهيدشوت الشامل\" — تقنية الدراغ خطوة بخطوة + حساسيات مضبوطة + أفضل أسلحة + خطة تمرين يومية 15 دقيقة\n" +
+                "• ↑ جديد v11.0: الكروس هير بقى له وضع \"مستوى الرأس\" — بيعوّد عينك تفضل على ارتفاع الراس فالدراغ يبقى أقصر وأسرع\n" +
+                "• 🎯 \"تمرين الإيم\" — 20 هدف بيقيسوا رد فعلك ودقتك برتب زي اللعبة (برونز←هيروك) — العب 2-3 جولات إحماء قبل الرانكد!\n" +
+                "• 📜 جديد v10.0: \"سجل الجلسات\" — آخر 10 جلسات بالحرارة والـ FPS + تحليل اتجاه: الجهاز بيسخن أكتر ولا بيتحسن؟\n" +
+                "• ⚡ جديد v10.0: ويدجت للشاشة الرئيسية — مطولاً على الشاشة ← ويدجت ← \"FF Booster\" — تسريع بلمسة واحدة من غير فتح التطبيق!\n" +
+                "• 🐷 \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
+                "• 📶 \"مُحسّن الشبكة\" — سباق بين 5 مزودين DNS ويطبّق الأسرع لشبكتك بخطوتين — دخول أسرع للماتش وإعادة اتصال أثبت\n" +
+                "• 📏 حجم الكروس هير قابل للتعديل (صغير/متوسط/كبير) + متوسط FPS بيتسجل في تقرير الجلسة\n" +
                 "• 🎯 كروس هير عائم في منتصف الشاشة — دقة رهيبة للنو سكوب والهيب فاير، ما بيأثرش على اللمس (3 أشكال × 5 ألوان × 3 أحجام)\n" +
                 "• 📊 عداد FPS حقيقي في الـ HUD — شوف الفريمات الفعلية وأنت بتلعب (🟢 50+ ممتاز | 🔴 أقل من 30 فيه مشكلة)\n" +
                 "• 🔇 الطيار الآلي بيفعّل \"عدم الإزعاج\" تلقائياً أثناء اللعب — مفيش إشعار هيبوظ عليك كلتش (محتاج إذن DND مرة واحدة)\n" +
@@ -138,6 +153,15 @@ public class MainActivity extends Activity {
         btnXhairSize.setOnClickListener(v -> cycleCrosshairSize());
         btnRamHogs.setOnClickListener(v -> startActivity(new Intent(this, RamHogsActivity.class)));
         btnNetOpt.setOnClickListener(v -> startActivity(new Intent(this, NetOptimizerActivity.class)));
+        btnAim.setOnClickListener(v -> startActivity(new Intent(this, AimTrainerActivity.class)));
+        btnHistory.setOnClickListener(v -> startActivity(new Intent(this, SessionHistoryActivity.class)));
+        btnHsTrainer.setOnClickListener(v -> startActivity(new Intent(this, HeadshotTrainerActivity.class)));
+        btnHsGuide.setOnClickListener(v -> startActivity(new Intent(this, HeadshotGuideActivity.class)));
+        btnXhairOffset.setOnClickListener(v -> cycleCrosshairOffset());
+        btnXhairCal.setOnClickListener(v -> startCrosshairCalibration());
+        btnLines.setOnClickListener(v -> toggleAimLines());
+        btnLinesMode.setOnClickListener(v -> cycleLinesMode());
+        btnLinesAlpha.setOnClickListener(v -> cycleLinesAlpha());
 
         refreshStats();
         updateBoostStats();
@@ -570,6 +594,104 @@ public class MainActivity extends Activity {
         ui.postDelayed(this::updateXhairButtons, 500);
     }
 
+    // v12.0: launch live calibration — arrow panel appears over the game so the
+    // user can nudge the dot until it sits EXACTLY on FF's native crosshair.
+    private void startCrosshairCalibration() {
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" الأول", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {}
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_CALIBRATE);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("xhair_enabled", true).apply();
+            Toast.makeText(this, "🛠 افتح فري فاير الآن — استخدم الأسهم تحت الشاشة لتحريك النقطة حتى تنطبق على كروس هير اللعبة بالظبط، ثم اضغط ✔ تم", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر فتح المعايرة", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateXhairButtons, 500);
+    }
+
+    // ---------- Pro Aim Lines (v13.0) — stronger aim aid ----------
+    private void toggleAimLines() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (AimLinesService.running) {
+            try { startService(new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_STOP)); } catch (Exception ignored) {}
+            sp.edit().putBoolean("lines_enabled", false).apply();
+            Toast.makeText(this, "⏹ تم إخفاء خطوط التصويب", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::updateXhairButtons, 300);
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" ثم ارجع وفعّل خطوط التصويب", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {}
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            sp.edit().putBoolean("lines_enabled", true).apply();
+            Toast.makeText(this, "📐 خطوط التصويب ظهرت! بتتبع نفس معايرة الكروس هير — أقوى مساعدة تصويب بدون أي غش", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تشغيل خطوط التصويب", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateXhairButtons, 500);
+    }
+
+    private void cycleLinesMode() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int mode = (sp.getInt("lines_mode", 0) + 1) % AimLinesService.MODE_NAMES.length;
+        sp.edit().putInt("lines_mode", mode).apply();
+        Toast.makeText(this, "وضع الخطوط: " + AimLinesService.MODE_NAMES[mode], Toast.LENGTH_SHORT).show();
+        restartLinesIfRunning();
+        updateXhairButtons();
+    }
+
+    private void cycleLinesAlpha() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int a = (sp.getInt("lines_alpha", 1) + 1) % AimLinesService.ALPHAS.length;
+        sp.edit().putInt("lines_alpha", a).apply();
+        Toast.makeText(this, "💡 وضوح الخطوط: " + AimLinesService.ALPHA_NAMES[a], Toast.LENGTH_SHORT).show();
+        restartLinesIfRunning();
+        updateXhairButtons();
+    }
+
+    private void restartLinesIfRunning() {
+        if (AimLinesService.running) {
+            try {
+                Intent svc = new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    // v11.0: cycle crosshair vertical position (center / head level / far head)
+    private void cycleCrosshairOffset() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int off = (sp.getInt("xhair_offset", 0) + 1) % CrosshairService.OFFSETS_DP.length;
+        sp.edit().putInt("xhair_offset", off).apply();
+        Toast.makeText(this, "↕ وضع الكروس هير: " + CrosshairService.OFFSET_NAMES[off]
+                + (off > 0 ? " — عينك هتتعود على ارتفاع الراس = دراغ أسرع!" : ""), Toast.LENGTH_SHORT).show();
+        if (CrosshairService.running) {
+            try {
+                Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+        updateXhairButtons();
+    }
+
     private void cycleCrosshairSize() {
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
         int size = (sp.getInt("xhair_size", 1) + 1) % CrosshairService.SIZES.length;
@@ -622,6 +744,26 @@ public class MainActivity extends Activity {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
             int size = sp.getInt("xhair_size", 1) % CrosshairService.SIZES.length;
             btnXhairSize.setText("📏 الحجم: " + CrosshairService.SIZE_NAMES[size]);
+        }
+        if (btnXhairOffset != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int off = sp.getInt("xhair_offset", 0) % CrosshairService.OFFSETS_DP.length;
+            btnXhairOffset.setText("↕ الارتفاع: " + CrosshairService.OFFSET_NAMES[off]);
+        }
+        // v13.0: aim-lines buttons
+        if (btnLines != null) {
+            btnLines.setText(AimLinesService.running
+                    ? "⏹ إخفاء الخطوط (ظاهرة ✅)" : "📐 خطوط التصويب برو");
+        }
+        if (btnLinesMode != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int mode = sp.getInt("lines_mode", 0) % AimLinesService.MODE_NAMES.length;
+            btnLinesMode.setText(AimLinesService.MODE_NAMES[mode]);
+        }
+        if (btnLinesAlpha != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int a = sp.getInt("lines_alpha", 1) % AimLinesService.ALPHAS.length;
+            btnLinesAlpha.setText("💡 " + AimLinesService.ALPHA_NAMES[a]);
         }
     }
 
