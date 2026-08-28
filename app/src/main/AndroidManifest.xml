@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.ffbooster.pro"
-    android:versionCode="10"
-    android:versionName="10.0">
+    android:versionCode="11"
+    android:versionName="11.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -83,6 +83,16 @@
 
         <activity
             android:name=".SessionHistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".HeadshotTrainerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".HeadshotGuideActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

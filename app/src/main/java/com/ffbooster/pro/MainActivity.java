@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -95,12 +95,18 @@ public class MainActivity extends Activity {
         btnNetOpt = findViewById(R.id.btnNetOpt);
         btnAim = findViewById(R.id.btnAim);
         btnHistory = findViewById(R.id.btnHistory);
+        btnHsTrainer = findViewById(R.id.btnHsTrainer);
+        btnHsGuide = findViewById(R.id.btnHsGuide);
+        btnXhairOffset = findViewById(R.id.btnXhairOffset);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
 
         tvTips.setText(
-                "• 🎯 جديد v10.0: \"تمرين الإيم\" — 20 هدف بيقيسوا رد فعلك ودقتك برتب زي اللعبة (برونز←هيروك) — العب 2-3 جولات إحماء قبل الرانكد!\n" +
+                "• 🎯 جديد v11.0: \"مدرب الدراغ هيدشوت\" — بيدربك على حركة السحب الحقيقية (جسم←راس) بتاعة فري فاير — 15 عدو بأحجام مختلفة + قياس نسبة الهيدشوت وسرعة الدراغ!\n" +
+                "• 📖 جديد v11.0: \"دليل الهيدشوت الشامل\" — تقنية الدراغ خطوة بخطوة + حساسيات مضبوطة + أفضل أسلحة + خطة تمرين يومية 15 دقيقة\n" +
+                "• ↑ جديد v11.0: الكروس هير بقى له وضع \"مستوى الرأس\" — بيعوّد عينك تفضل على ارتفاع الراس فالدراغ يبقى أقصر وأسرع\n" +
+                "• 🎯 \"تمرين الإيم\" — 20 هدف بيقيسوا رد فعلك ودقتك برتب زي اللعبة (برونز←هيروك) — العب 2-3 جولات إحماء قبل الرانكد!\n" +
                 "• 📜 جديد v10.0: \"سجل الجلسات\" — آخر 10 جلسات بالحرارة والـ FPS + تحليل اتجاه: الجهاز بيسخن أكتر ولا بيتحسن؟\n" +
                 "• ⚡ جديد v10.0: ويدجت للشاشة الرئيسية — مطولاً على الشاشة ← ويدجت ← \"FF Booster\" — تسريع بلمسة واحدة من غير فتح التطبيق!\n" +
                 "• 🐷 \"محلل التطبيقات الخانقة\" — شوف مين واكل الرام بالاسم واعمله إيقاف إجباري قبل الرانكد!\n" +
@@ -145,6 +151,9 @@ public class MainActivity extends Activity {
         btnNetOpt.setOnClickListener(v -> startActivity(new Intent(this, NetOptimizerActivity.class)));
         btnAim.setOnClickListener(v -> startActivity(new Intent(this, AimTrainerActivity.class)));
         btnHistory.setOnClickListener(v -> startActivity(new Intent(this, SessionHistoryActivity.class)));
+        btnHsTrainer.setOnClickListener(v -> startActivity(new Intent(this, HeadshotTrainerActivity.class)));
+        btnHsGuide.setOnClickListener(v -> startActivity(new Intent(this, HeadshotGuideActivity.class)));
+        btnXhairOffset.setOnClickListener(v -> cycleCrosshairOffset());
 
         refreshStats();
         updateBoostStats();
@@ -577,6 +586,23 @@ public class MainActivity extends Activity {
         ui.postDelayed(this::updateXhairButtons, 500);
     }
 
+    // v11.0: cycle crosshair vertical position (center / head level / far head)
+    private void cycleCrosshairOffset() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int off = (sp.getInt("xhair_offset", 0) + 1) % CrosshairService.OFFSETS_DP.length;
+        sp.edit().putInt("xhair_offset", off).apply();
+        Toast.makeText(this, "↕ وضع الكروس هير: " + CrosshairService.OFFSET_NAMES[off]
+                + (off > 0 ? " — عينك هتتعود على ارتفاع الراس = دراغ أسرع!" : ""), Toast.LENGTH_SHORT).show();
+        if (CrosshairService.running) {
+            try {
+                Intent svc = new Intent(this, CrosshairService.class).setAction(CrosshairService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+        updateXhairButtons();
+    }
+
     private void cycleCrosshairSize() {
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
         int size = (sp.getInt("xhair_size", 1) + 1) % CrosshairService.SIZES.length;
@@ -629,6 +655,11 @@ public class MainActivity extends Activity {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
             int size = sp.getInt("xhair_size", 1) % CrosshairService.SIZES.length;
             btnXhairSize.setText("📏 الحجم: " + CrosshairService.SIZE_NAMES[size]);
+        }
+        if (btnXhairOffset != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int off = sp.getInt("xhair_offset", 0) % CrosshairService.OFFSETS_DP.length;
+            btnXhairOffset.setText("↕ الارتفاع: " + CrosshairService.OFFSET_NAMES[off]);
         }
     }
 

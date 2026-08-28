@@ -47,6 +47,11 @@ public class CrosshairService extends Service {
     // Adjustable size (v9.0): scale factor applied to every drawn dimension
     static final float[] SIZES = {0.7f, 1.0f, 1.45f};
     static final String[] SIZE_NAMES = {"صغير", "متوسط", "كبير"};
+    // v11.0 headshot mode: vertical offset in dp (negative = higher on screen).
+    // FF's default crosshair rests at chest level — raising the overlay dot to
+    // head level trains the eye to keep aim at head height at all times.
+    static final int[] OFFSETS_DP = {0, -28, -52};
+    static final String[] OFFSET_NAMES = {"وسط (عادي)", "مستوى الرأس 🎯", "رأس بعيد (قنص)"};
 
     private WindowManager wm;
     private CrosshairView view;
@@ -63,8 +68,19 @@ public class CrosshairService extends Service {
         }
         createChannel();
         startForeground(NOTIF_ID, buildNotification());
-        if (view == null) addOverlay();
-        else view.invalidate(); // refresh style if restarted with new prefs
+        if (view == null) {
+            addOverlay();
+        } else {
+            // refresh style + reposition if restarted with new prefs (v11.0)
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                int offIdx = sp.getInt("xhair_offset", 0) % OFFSETS_DP.length;
+                WindowManager.LayoutParams cur = (WindowManager.LayoutParams) view.getLayoutParams();
+                cur.y = dp(OFFSETS_DP[offIdx]);
+                wm.updateViewLayout(view, cur);
+            } catch (Exception ignored) {}
+            view.invalidate();
+        }
         running = true;
         return START_STICKY;
     }
@@ -85,6 +101,10 @@ public class CrosshairService extends Service {
                         | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.CENTER;
+        // v11.0: apply saved vertical offset (headshot-level aiming)
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int offIdx = sp.getInt("xhair_offset", 0) % OFFSETS_DP.length;
+        lp.y = dp(OFFSETS_DP[offIdx]);
 
         try { wm.addView(view, lp); } catch (Exception e) { stopSelf(); }
     }
