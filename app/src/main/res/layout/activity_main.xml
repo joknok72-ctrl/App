@@ -327,6 +327,49 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- v13.0: Pro Aim Lines — stronger aim aid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnLines"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1.1"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/btn_launch"
+                android:text="📐 خطوط التصويب برو"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnLinesMode"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/btn_secondary"
+                android:text="📐 خطوط كاملة"
+                android:textColor="@color/text_main"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnLinesAlpha"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="0.7"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/btn_secondary"
+                android:text="💡 متوسط"
+                android:textColor="@color/text_main"
+                android:textSize="12sp" />
+        </LinearLayout>
+
         <!-- Aim Trainer + Session History row (v10.0) -->
         <LinearLayout
             android:layout_width="match_parent"

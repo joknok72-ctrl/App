@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.ffbooster.pro"
-    android:versionCode="12"
-    android:versionName="12.0">
+    android:versionCode="13"
+    android:versionName="13.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -143,6 +143,15 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="aim_crosshair_overlay" />
+        </service>
+
+        <service
+            android:name=".AimLinesService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="aim_guide_lines_overlay" />
         </service>
 
         <service

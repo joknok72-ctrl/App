@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private TextView tvDeviceName, tvRam, tvStorage, tvBattery, tvBoostStatus, tvPingResult, tvTips, tvBoostStats, tvFfStatus, tvSession;
     private ProgressBar pbRam, pbStorage;
     private View pingCard;
-    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset, btnXhairCal;
+    private Button btnBoost, btnLaunch, btnPing, btnGfx, btnMeta, btnSens, btnTools, btnCombos, btnCodes, btnGameMode, btnHud, btnReadiness, btnAutoPilot, btnXhair, btnXhairStyle, btnXhairSize, btnRamHogs, btnNetOpt, btnAim, btnHistory, btnHsTrainer, btnHsGuide, btnXhairOffset, btnXhairCal, btnLines, btnLinesMode, btnLinesAlpha;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -99,6 +99,9 @@ public class MainActivity extends Activity {
         btnHsGuide = findViewById(R.id.btnHsGuide);
         btnXhairOffset = findViewById(R.id.btnXhairOffset);
         btnXhairCal = findViewById(R.id.btnXhairCal);
+        btnLines = findViewById(R.id.btnLines);
+        btnLinesMode = findViewById(R.id.btnLinesMode);
+        btnLinesAlpha = findViewById(R.id.btnLinesAlpha);
         tvBoostStats = findViewById(R.id.tvBoostStats);
         tvFfStatus = findViewById(R.id.tvFfStatus);
         tvSession = findViewById(R.id.tvSession);
@@ -156,6 +159,9 @@ public class MainActivity extends Activity {
         btnHsGuide.setOnClickListener(v -> startActivity(new Intent(this, HeadshotGuideActivity.class)));
         btnXhairOffset.setOnClickListener(v -> cycleCrosshairOffset());
         btnXhairCal.setOnClickListener(v -> startCrosshairCalibration());
+        btnLines.setOnClickListener(v -> toggleAimLines());
+        btnLinesMode.setOnClickListener(v -> cycleLinesMode());
+        btnLinesAlpha.setOnClickListener(v -> cycleLinesAlpha());
 
         refreshStats();
         updateBoostStats();
@@ -611,6 +617,64 @@ public class MainActivity extends Activity {
         ui.postDelayed(this::updateXhairButtons, 500);
     }
 
+    // ---------- Pro Aim Lines (v13.0) — stronger aim aid ----------
+    private void toggleAimLines() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (AimLinesService.running) {
+            try { startService(new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_STOP)); } catch (Exception ignored) {}
+            sp.edit().putBoolean("lines_enabled", false).apply();
+            Toast.makeText(this, "⏹ تم إخفاء خطوط التصويب", Toast.LENGTH_SHORT).show();
+            ui.postDelayed(this::updateXhairButtons, 300);
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "🔐 فعّل إذن \"الظهور فوق التطبيقات\" ثم ارجع وفعّل خطوط التصويب", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {}
+            return;
+        }
+        try {
+            Intent svc = new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+            else startService(svc);
+            sp.edit().putBoolean("lines_enabled", true).apply();
+            Toast.makeText(this, "📐 خطوط التصويب ظهرت! بتتبع نفس معايرة الكروس هير — أقوى مساعدة تصويب بدون أي غش", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "تعذر تشغيل خطوط التصويب", Toast.LENGTH_SHORT).show();
+        }
+        ui.postDelayed(this::updateXhairButtons, 500);
+    }
+
+    private void cycleLinesMode() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int mode = (sp.getInt("lines_mode", 0) + 1) % AimLinesService.MODE_NAMES.length;
+        sp.edit().putInt("lines_mode", mode).apply();
+        Toast.makeText(this, "وضع الخطوط: " + AimLinesService.MODE_NAMES[mode], Toast.LENGTH_SHORT).show();
+        restartLinesIfRunning();
+        updateXhairButtons();
+    }
+
+    private void cycleLinesAlpha() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int a = (sp.getInt("lines_alpha", 1) + 1) % AimLinesService.ALPHAS.length;
+        sp.edit().putInt("lines_alpha", a).apply();
+        Toast.makeText(this, "💡 وضوح الخطوط: " + AimLinesService.ALPHA_NAMES[a], Toast.LENGTH_SHORT).show();
+        restartLinesIfRunning();
+        updateXhairButtons();
+    }
+
+    private void restartLinesIfRunning() {
+        if (AimLinesService.running) {
+            try {
+                Intent svc = new Intent(this, AimLinesService.class).setAction(AimLinesService.ACTION_START);
+                if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(svc);
+                else startService(svc);
+            } catch (Exception ignored) {}
+        }
+    }
+
     // v11.0: cycle crosshair vertical position (center / head level / far head)
     private void cycleCrosshairOffset() {
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -685,6 +749,21 @@ public class MainActivity extends Activity {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
             int off = sp.getInt("xhair_offset", 0) % CrosshairService.OFFSETS_DP.length;
             btnXhairOffset.setText("↕ الارتفاع: " + CrosshairService.OFFSET_NAMES[off]);
+        }
+        // v13.0: aim-lines buttons
+        if (btnLines != null) {
+            btnLines.setText(AimLinesService.running
+                    ? "⏹ إخفاء الخطوط (ظاهرة ✅)" : "📐 خطوط التصويب برو");
+        }
+        if (btnLinesMode != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int mode = sp.getInt("lines_mode", 0) % AimLinesService.MODE_NAMES.length;
+            btnLinesMode.setText(AimLinesService.MODE_NAMES[mode]);
+        }
+        if (btnLinesAlpha != null) {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            int a = sp.getInt("lines_alpha", 1) % AimLinesService.ALPHAS.length;
+            btnLinesAlpha.setText("💡 " + AimLinesService.ALPHA_NAMES[a]);
         }
     }
 
